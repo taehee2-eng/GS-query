@@ -1,0 +1,3141 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>글로벌전략팀 SQL 가이드 📊</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: #2e3348;
+    --accent: #6c8ef7;
+    --accent2: #a78bfa;
+    --green: #34d399;
+    --yellow: #fbbf24;
+    --red: #f87171;
+    --text: #e2e8f0;
+    --text-muted: #b0bcc8;
+    --code-bg: #13162a;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'Segoe UI', 'Apple SD Gothic Neo', sans-serif;
+    display:flex; height:100vh; overflow:hidden;
+  }
+
+  /* SIDEBAR */
+  #sidebar {
+    width:260px; min-width:260px; background: var(--surface);
+    border-right: 1px solid var(--border);
+    display:flex; flex-direction:column; overflow:hidden;
+  }
+  #sidebar-header {
+    padding:20px 16px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  #sidebar-header h1 { font-size:15px; color:var(--text); font-weight:700; }
+  #sidebar-header p { font-size:11px; color:var(--text-muted); margin-top:4px; }
+  #search-box {
+    margin:12px 12px 0;
+    background: var(--code-bg); border:1px solid var(--border);
+    border-radius:8px; padding:8px 10px;
+    color:var(--text); font-size:13px; width:calc(100% - 24px);
+    outline:none;
+  }
+  #search-box:focus { border-color:var(--accent); }
+  #search-box::placeholder { color:var(--text-muted); }
+  #nav { flex:1; overflow-y:auto; padding:8px 0 20px; }
+  #nav::-webkit-scrollbar { width:4px; }
+  #nav::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+  .nav-section { margin-bottom:4px; }
+  .nav-section-title {
+    font-size:10px; font-weight:700; letter-spacing:.08em;
+    color:var(--text-muted); text-transform:uppercase;
+    padding:8px 16px 4px;
+  }
+  .nav-item {
+    display:block; padding:7px 16px; cursor:pointer;
+    font-size:13px; color:var(--text-muted);
+    border-left:2px solid transparent;
+    transition:all .15s;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .nav-item:hover { background:var(--surface2); color:var(--text); }
+  .nav-item.active {
+    color:var(--accent); border-left-color:var(--accent);
+    background:rgba(108,142,247,.08);
+  }
+  .nav-tag {
+    display:inline-block; font-size:9px; padding:1px 5px;
+    border-radius:4px; margin-left:6px; vertical-align:middle;
+  }
+  .tag-basic { background:rgba(52,211,153,.15); color:var(--green); }
+  .tag-mid { background:rgba(251,191,36,.15); color:var(--yellow); }
+  .tag-adv { background:rgba(167,139,250,.15); color:var(--accent2); }
+
+  /* MAIN */
+  #main {
+    flex:1; display:flex; flex-direction:column; overflow:hidden;
+  }
+  #topbar {
+    padding:16px 28px; border-bottom:1px solid var(--border);
+    display:flex; align-items:center; gap:12px;
+    background:var(--surface);
+  }
+  #topbar h2 { font-size:17px; font-weight:700; }
+  #topbar .badge {
+    font-size:11px; padding:2px 8px; border-radius:20px;
+    background:rgba(108,142,247,.15); color:var(--accent);
+  }
+  #content { flex:1; overflow-y:auto; padding:24px 28px; }
+  #content::-webkit-scrollbar { width:6px; }
+  #content::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+
+  /* TEACHER PANEL */
+  #teacher-toggle {
+    position:fixed; right:20px; bottom:20px;
+    width:52px; height:52px; border-radius:50%;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border:none; cursor:pointer; color:#fff; font-size:22px;
+    box-shadow:0 4px 20px rgba(108,142,247,.4);
+    transition:transform .2s; z-index:100;
+  }
+  #teacher-toggle:hover { transform:scale(1.08); }
+  #teacher-panel {
+    position:fixed; right:20px; bottom:84px;
+    width:360px; background:var(--surface);
+    border:1px solid var(--border); border-radius:16px;
+    box-shadow:0 8px 40px rgba(0,0,0,.5);
+    display:none; flex-direction:column;
+    max-height:500px; z-index:100;
+    overflow:hidden;
+  }
+  #teacher-panel.open { display:flex; }
+  #teacher-header {
+    padding:14px 16px; background:linear-gradient(135deg, rgba(108,142,247,.2), rgba(167,139,250,.15));
+    border-bottom:1px solid var(--border);
+    display:flex; align-items:center; gap:10px;
+  }
+  #teacher-header .avatar {
+    width:32px; height:32px; border-radius:50%;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));
+    display:flex; align-items:center; justify-content:center;
+    font-size:16px;
+  }
+  #teacher-header h3 { font-size:14px; font-weight:700; }
+  #teacher-header p { font-size:11px; color:var(--text-muted); }
+  #chat-area {
+    flex:1; overflow-y:auto; padding:14px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  #chat-area::-webkit-scrollbar { width:4px; }
+  #chat-area::-webkit-scrollbar-thumb { background:var(--border); }
+  .chat-msg {
+    padding:9px 12px; border-radius:12px; font-size:13px; line-height:1.5;
+    max-width:90%;
+  }
+  .chat-msg.bot {
+    background:var(--surface2); color:var(--text);
+    border-radius:4px 12px 12px 12px;
+  }
+  .chat-msg.user {
+    background:rgba(108,142,247,.2); color:var(--text);
+    align-self:flex-end;
+    border-radius:12px 12px 4px 12px;
+  }
+  .chat-msg code {
+    background:var(--code-bg); padding:1px 5px; border-radius:4px;
+    font-family:monospace; font-size:12px; color:var(--green);
+  }
+  #quick-btns {
+    padding:10px 14px; display:flex; flex-wrap:wrap; gap:6px;
+    border-top:1px solid var(--border);
+  }
+  .quick-btn {
+    font-size:11px; padding:5px 10px; border-radius:20px;
+    border:1px solid var(--border); background:transparent;
+    color:var(--text-muted); cursor:pointer; transition:all .15s;
+  }
+  .quick-btn:hover { border-color:var(--accent); color:var(--accent); }
+  #chat-input-row {
+    padding:10px 14px; border-top:1px solid var(--border);
+    display:flex; gap:8px;
+  }
+  #chat-input {
+    flex:1; background:var(--code-bg); border:1px solid var(--border);
+    border-radius:8px; padding:8px 10px; color:var(--text);
+    font-size:13px; outline:none;
+  }
+  #chat-input:focus { border-color:var(--accent); }
+  #chat-send {
+    background:var(--accent); border:none; border-radius:8px;
+    padding:8px 14px; color:#fff; cursor:pointer; font-size:13px;
+    transition:opacity .15s;
+  }
+  #chat-send:hover { opacity:.85; }
+
+  /* QUERY CARD */
+  .query-card {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:12px; margin-bottom:16px; overflow:hidden;
+    transition:border-color .15s;
+  }
+  .query-card:hover { border-color:var(--accent); }
+  .query-card.hidden { display:none; }
+  .card-header {
+    padding:14px 16px; cursor:pointer;
+    display:flex; align-items:flex-start; gap:10px;
+  }
+  .card-num {
+    min-width:28px; height:28px; border-radius:8px;
+    background:rgba(108,142,247,.15); color:var(--accent);
+    font-size:12px; font-weight:700; display:flex;
+    align-items:center; justify-content:center;
+  }
+  .card-title-wrap { flex:1; }
+  .card-title { font-size:14px; font-weight:600; line-height:1.3; }
+  .card-desc { font-size:12px; color:var(--text-muted); margin-top:3px; }
+  .card-tags { display:flex; gap:5px; margin-top:6px; flex-wrap:wrap; }
+  .card-tag {
+    font-size:10px; padding:2px 7px; border-radius:10px;
+    background:var(--surface2); color:var(--text-muted);
+  }
+  .card-tag.table { background:rgba(52,211,153,.1); color:var(--green); }
+  .card-tag.func { background:rgba(251,191,36,.1); color:var(--yellow); }
+  .card-toggle { color:var(--text-muted); font-size:14px; transition:transform .2s; }
+  .card-toggle.open { transform:rotate(180deg); }
+  .card-body { border-top:1px solid var(--border); display:none; }
+  .card-body.open { display:block; }
+  .card-section { padding:12px 16px; border-bottom:1px solid var(--border); }
+  .card-section:last-child { border-bottom:none; }
+  .section-label {
+    font-size:10px; font-weight:700; text-transform:uppercase;
+    color:var(--text-muted); letter-spacing:.06em; margin-bottom:8px;
+  }
+  .hint-box {
+    background:rgba(108,142,247,.08); border:1px solid rgba(108,142,247,.2);
+    border-radius:8px; padding:10px 12px; font-size:12px;
+    color:var(--text); line-height:1.6;
+  }
+  .hint-box.warn {
+    background:rgba(251,191,36,.06); border-color:rgba(251,191,36,.2);
+    color:#e2c96a;
+  }
+  .hint-box.success {
+    background:rgba(52,211,153,.06); border-color:rgba(52,211,153,.2);
+    color:#6ee7b7;
+  }
+  .hint-icon { margin-right:5px; }
+  .code-wrap { position:relative; }
+  pre {
+    background:var(--code-bg); border-radius:8px;
+    padding:14px; overflow-x:auto; font-size:12.5px;
+    line-height:1.7; border:1px solid var(--border);
+  }
+  pre::-webkit-scrollbar { height:4px; }
+  pre::-webkit-scrollbar-thumb { background:var(--border); }
+  .copy-btn {
+    position:absolute; top:8px; right:8px;
+    background:var(--surface2); border:1px solid var(--border);
+    border-radius:6px; padding:4px 10px; color:var(--text-muted);
+    cursor:pointer; font-size:11px; transition:all .15s;
+  }
+  .copy-btn:hover { border-color:var(--accent); color:var(--accent); }
+  .copy-btn.copied { border-color:var(--green); color:var(--green); }
+
+  /* QUIZ */
+  .quiz-section-header {
+    display:flex; align-items:center; gap:10px;
+    padding:24px 0 12px; border-top:1px solid var(--border); margin-top:8px;
+  }
+  .quiz-section-header h3 { font-size:16px; font-weight:700; }
+  .quiz-section-header p { font-size:12px; color:var(--text-muted); margin-top:2px; }
+  .quiz-badge {
+    font-size:10px; padding:2px 8px; border-radius:10px;
+    background:rgba(251,191,36,.15); color:var(--yellow);
+  }
+  .quiz-card {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:12px; margin-bottom:12px; overflow:hidden;
+    border-left:3px solid var(--yellow);
+  }
+  .quiz-card:hover { border-color:var(--yellow); }
+  .quiz-header {
+    padding:14px 16px; cursor:pointer;
+    display:flex; align-items:flex-start; gap:10px;
+  }
+  .quiz-num {
+    min-width:28px; height:28px; border-radius:8px;
+    background:rgba(251,191,36,.15); color:var(--yellow);
+    font-size:12px; font-weight:700;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .quiz-level {
+    font-size:10px; padding:2px 7px; border-radius:10px;
+    margin-left:6px; vertical-align:middle;
+  }
+  .level-기초 { background:rgba(52,211,153,.1); color:var(--green); }
+  .level-중급 { background:rgba(251,191,36,.1); color:var(--yellow); }
+  .level-고급 { background:rgba(167,139,250,.1); color:var(--accent2); }
+  .quiz-body { border-top:1px solid var(--border); display:none; }
+  .quiz-body.open { display:block; }
+  .quiz-hints { padding:12px 16px; border-bottom:1px solid var(--border); }
+  .hint-list { list-style:none; margin-top:6px; display:flex; flex-wrap:wrap; gap:6px; }
+  .hint-list li {
+    background:var(--code-bg); border:1px solid var(--border);
+    border-radius:6px; padding:3px 9px; font-size:11px;
+    color:var(--text-muted); font-family:monospace;
+  }
+  .quiz-answer { display:none; }
+  .quiz-answer.open { display:block; }
+  .answer-toggle {
+    margin:12px 16px; padding:8px 14px; border-radius:8px;
+    border:1px solid var(--border); background:transparent;
+    color:var(--text-muted); cursor:pointer; font-size:12px;
+    width:calc(100% - 32px); text-align:left; transition:all .15s;
+  }
+  .answer-toggle:hover { border-color:var(--accent); color:var(--accent); }
+  .answer-toggle.revealed { border-color:var(--green); color:var(--green); }
+  .quiz-answer .card-section { padding:0 16px 14px; }
+
+  /* Syntax highlight */
+  .kw { color:#81a1f7; font-weight:600; }
+  .fn { color:#fbbf24; }
+  .str { color:#f97316; }
+  .cm { color:#4a5568; font-style:italic; }
+  .tbl { color:#34d399; }
+  .num { color:#a78bfa; }
+  .op { color:#94a3b8; }
+
+  /* CHAPTER HEADER */
+  .chapter-header {
+    padding:20px 0 12px;
+    display:flex; align-items:center; gap:12px;
+    border-bottom:1px solid var(--border); margin-bottom:20px;
+  }
+  .chapter-icon {
+    width:40px; height:40px; border-radius:10px;
+    display:flex; align-items:center; justify-content:center; font-size:20px;
+  }
+  .chapter-header h2 { font-size:20px; font-weight:700; }
+  .chapter-header p { font-size:13px; color:var(--text-muted); margin-top:2px; }
+
+  /* TABLE INFO */
+  .table-info-grid {
+    display:grid; grid-template-columns:repeat(auto-fill, minmax(220px,1fr));
+    gap:10px; margin-bottom:8px;
+  }
+  .table-info-card {
+    background:var(--code-bg); border:1px solid var(--border);
+    border-radius:8px; padding:10px 12px;
+  }
+  .table-info-card .tname { font-size:12px; font-weight:700; color:var(--green); font-family:monospace; }
+  .table-info-card .tdesc { font-size:11px; color:var(--text-muted); margin-top:3px; }
+  .table-info-card .tstars { color:var(--yellow); font-size:11px; margin-top:4px; }
+
+  /* HOME */
+  .home-grid {
+    display:grid; grid-template-columns:repeat(auto-fill, minmax(240px,1fr));
+    gap:12px; margin-bottom:24px;
+  }
+  .home-card {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:12px; padding:16px; cursor:pointer;
+    transition:all .15s;
+  }
+  .home-card:hover { border-color:var(--accent); transform:translateY(-2px); }
+  .home-card .hc-icon { font-size:24px; margin-bottom:8px; }
+  .home-card .hc-title { font-size:14px; font-weight:700; margin-bottom:4px; }
+  .home-card .hc-desc { font-size:12px; color:var(--text-muted); line-height:1.5; }
+  .home-card .hc-count {
+    margin-top:8px; font-size:11px; color:var(--accent);
+  }
+  .welcome-banner {
+    background: linear-gradient(135deg, rgba(108,142,247,.2), rgba(167,139,250,.15));
+    border:1px solid rgba(108,142,247,.3); border-radius:16px;
+    padding:40px 32px; margin-bottom:32px; text-align:center;
+  }
+  .welcome-banner h1 { font-size:32px; font-weight:800; margin-bottom:12px; background:linear-gradient(135deg, #6c8ef7, #a78bfa); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+  .welcome-banner p { font-size:16px; color:var(--text-muted); line-height:1.7; }
+
+  /* SEARCH */
+  .search-container {
+    margin-bottom:32px;
+  }
+  .search-input-wrapper {
+    position:relative; margin-bottom:20px;
+  }
+  .search-input-wrapper input {
+    width:100%; padding:16px 20px; font-size:16px;
+    background:var(--surface); border:2px solid var(--border);
+    border-radius:12px; transition:all .2s;
+    font-family:inherit; color:#b0bcc8;
+  }
+  .search-input-wrapper input:focus {
+    outline:none; border-color:var(--accent);
+    box-shadow:0 0 0 3px rgba(108,142,247,.1);
+  }
+  .search-input-wrapper::after {
+    content:'🔍'; position:absolute; right:16px; top:50%;
+    transform:translateY(-50%); color:var(--text-muted); pointer-events:none;
+  }
+
+  .recommended-section {
+    margin-bottom:32px;
+  }
+  .recommended-section h3 {
+    font-size:14px; font-weight:700; color:var(--text-muted);
+    margin-bottom:12px; text-transform:uppercase; letter-spacing:.5px;
+  }
+  .recommended-questions {
+    display:flex; flex-wrap:wrap; gap:8px;
+  }
+  .question-chip {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:20px; padding:8px 14px; font-size:13px;
+    cursor:pointer; transition:all .15s; white-space:nowrap;
+  }
+  .question-chip:hover {
+    border-color:var(--accent); background:rgba(108,142,247,.05);
+    transform:translateY(-1px);
+  }
+
+  /* GLOSSARY */
+  .glossary-grid {
+    display:grid; grid-template-columns:repeat(auto-fill, minmax(260px,1fr));
+    gap:10px;
+  }
+  .glossary-item {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:10px; padding:12px 14px;
+  }
+  .glossary-item .gterm { font-size:13px; font-weight:700; color:var(--accent); font-family:monospace; }
+  .glossary-item .gdef { font-size:12px; color:var(--text-muted); margin-top:4px; line-height:1.5; }
+  .glossary-item .gex { font-size:11px; color:var(--green); margin-top:5px; font-family:monospace; }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<div id="sidebar">
+  <div id="sidebar-header">
+    <h1>📊 SQL 가이드</h1>
+    <p>글로벌전략팀 · BigQuery</p>
+  </div>
+  <input id="search-box" type="text" placeholder="🔍 쿼리 검색..." oninput="handleSearch(this.value)">
+  <nav id="nav">
+    <div class="nav-section">
+      <div class="nav-section-title">시작하기</div>
+      <div class="nav-item active" onclick="showPage('home')">🏠 홈</div>
+      <div class="nav-item" onclick="showPage('tables')">🗂️ 주요 테이블 정리</div>
+      <div class="nav-item" onclick="showPage('glossary')">📖 SQL 용어 사전</div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">쿼리 챕터</div>
+      <div class="nav-item" onclick="showPage('ch0')">Ch.0 · 기초 조회 <span class="nav-tag tag-basic">기초</span></div>
+      <div class="nav-item" onclick="showPage('ch1')">Ch.1 · 집계 &amp; CASE WHEN <span class="nav-tag tag-basic">기초</span></div>
+      <div class="nav-item" onclick="showPage('ch2')">Ch.2 · 서브쿼리 <span class="nav-tag tag-mid">중급</span></div>
+      <div class="nav-item" onclick="showPage('ch3')">Ch.3 · JOIN &amp; UNION <span class="nav-tag tag-mid">중급</span></div>
+      <div class="nav-item" onclick="showPage('ch4')">Ch.4 · CTE (WITH절) <span class="nav-tag tag-adv">고급</span></div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">실무 쿼리</div>
+      <div class="nav-item" onclick="showPage('ref')">⭐ 글전팀 주요 쿼리</div>
+    </div>
+  </nav>
+</div>
+
+<!-- MAIN -->
+<div id="main">
+  <div id="topbar">
+    <h2 id="page-title">홈</h2>
+    <span id="page-badge" class="badge"></span>
+  </div>
+  <div id="content"></div>
+</div>
+
+<!-- TEACHER BUTTON -->
+<button id="teacher-toggle" onclick="toggleTeacher()" title="SQL 선생님에게 물어보기">🤖</button>
+
+<!-- TEACHER PANEL -->
+<div id="teacher-panel">
+  <div id="teacher-header">
+    <div class="avatar">🤖</div>
+    <div>
+      <h3>SQL 선생님</h3>
+      <p>무엇이든 물어보세요!</p>
+    </div>
+  </div>
+  <div id="chat-area">
+    <div class="chat-msg bot">
+      안녕하세요! 저는 글전팀 SQL 가이드 선생님이에요 📚<br><br>
+      아래 버튼을 눌러 자주 묻는 질문을 확인하거나, 직접 질문을 입력해보세요!
+    </div>
+  </div>
+  <div id="quick-btns">
+    <button class="quick-btn" onclick="quickAsk('partition_key')">파티션키가 뭔가요?</button>
+    <button class="quick-btn" onclick="quickAsk('group_by')">GROUP BY 언제 써요?</button>
+    <button class="quick-btn" onclick="quickAsk('join_diff')">LEFT JOIN vs INNER JOIN</button>
+    <button class="quick-btn" onclick="quickAsk('with_cte')">WITH절 왜 써요?</button>
+    <button class="quick-btn" onclick="quickAsk('net_amt')">순판매액은 어떻게 계산?</button>
+    <button class="quick-btn" onclick="quickAsk('date_trunc')">DATE_TRUNC 사용법</button>
+  </div>
+  <div id="chat-input-row">
+    <input id="chat-input" placeholder="질문 입력..." onkeydown="if(event.key==='Enter')sendChat()">
+    <button id="chat-send" onclick="sendChat()">전송</button>
+  </div>
+</div>
+
+<script>
+// ===== DATA =====
+const PAGES = {
+  home: { title:'홈', badge:'' },
+  tables: { title:'주요 테이블 정리', badge:'BigQuery' },
+  glossary: { title:'SQL 용어 사전', badge:'참고자료' },
+  ch0: { title:'Ch.0 · 기초 조회 · we_order 탐색', badge:'기초' },
+  ch1: { title:'Ch.1 · 집계 & CASE WHEN', badge:'기초' },
+  ch2: { title:'Ch.2 · 서브쿼리', badge:'중급' },
+  ch3: { title:'Ch.3 · JOIN & UNION', badge:'중급' },
+  ch4: { title:'Ch.4 · CTE (WITH절)', badge:'고급' },
+  ref: { title:'글전팀 주요 쿼리 모음', badge:'실무' },
+};
+
+const QUERIES = {
+  ch0: [
+    {
+      id:'ch0-q1',
+      num:'Q1',
+      title:'we_order 전체 컬럼 10줄 조회하기',
+      desc:'테이블 구조 파악용 기본 조회. 항상 LIMIT와 파티션키 함께!',
+      tables:['we_order'],
+      funcs:['SELECT *', 'LIMIT'],
+      hint:'⭐ 파티션키(part_date)를 항상 WHERE에 넣어야 비용/속도 최적화가 돼요. part_date 없이 돌리면 전체 테이블을 스캔해서 엄청 느려요!',
+      hintType:'warn',
+      code:`/* we_order 전체 컬럼, 10줄만 조회 */
+SELECT *
+FROM weverse-prod-analytics.we_mart.we_order
+WHERE part_date = '2026-01-01'  -- 파티션키 (필수!)
+LIMIT 10`
+    },
+    {
+      id:'ch0-q2',
+      num:'Q2',
+      title:'we_order 상품 유형(product_type) 값 확인하기',
+      desc:'어떤 상품 종류가 있는지 고유값 목록 조회',
+      tables:['we_order'],
+      funcs:['DISTINCT'],
+      hint:'DISTINCT는 중복을 제거하고 고유한 값만 가져와요. 어떤 값이 있는지 파악할 때 유용해요.',
+      hintType:'info',
+      code:`/* 상품 유형(product_type) 고유값 목록 조회 */
+SELECT DISTINCT product_type
+FROM weverse-prod-analytics.we_mart.we_order
+WHERE part_date = '2026-01-01'`
+    },
+    {
+      id:'ch0-q3',
+      num:'Q3',
+      title:'WDM 전주 총 판매액 조회하기',
+      desc:'특정 상품 + 기간 필터 후 SUM 집계',
+      tables:['we_order'],
+      funcs:['SUM', 'WHERE'],
+      hint:'날짜 범위 주의: part_date < \'2026-01-18\' 은 01-17 23:59:59까지 포함돼요. between \'A\' and \'B\'는 B 자정까지만 포함!',
+      hintType:'warn',
+      code:`/* WDM 전주 총 판매액 */
+SELECT SUM(pay_amt_krw) AS total_amt
+FROM weverse-prod-analytics.we_mart.we_order
+WHERE part_date >= '2026-01-12'
+  AND part_date < '2026-01-19'  -- 01-18까지 포함하려면 < 01-19
+  AND product_type = 'WDM'`
+    },
+    {
+      id:'ch0-q4',
+      num:'Q4',
+      title:'디지털 상품군 전주 일별/상품별 판매액',
+      desc:'IN 조건 + GROUP BY로 여러 상품 묶어서 집계',
+      tables:['we_order'],
+      funcs:['IN', 'GROUP BY', 'SUM', 'ORDER BY'],
+      hint:'디지털 상품: WDM, Digital_Membership, Membership\n피지컬 상품: 나머지 (ALBUM, MD 등)\nIN 조건으로 여러 값 한 번에 필터링할 수 있어요.',
+      hintType:'info',
+      code:`/* 디지털 상품군 전주 일별/상품별 판매액 */
+SELECT
+  key_date,
+  product_type,
+  SUM(pay_amt_krw) AS total_amt
+FROM weverse-prod-analytics.we_mart.we_order
+WHERE part_date >= '2026-01-12'
+  AND part_date < '2026-01-19'
+  AND product_type IN ('WDM', 'Digital_Membership', 'Membership')
+GROUP BY key_date, product_type
+ORDER BY key_date ASC`
+    },
+    {
+      id:'ch0-q5',
+      num:'Q5',
+      title:'피지컬 상품군 전주 일별 판매액 (매출순 정렬)',
+      desc:'NOT IN으로 디지털 제외, 매출 내림차순 정렬',
+      tables:['we_order'],
+      funcs:['NOT IN', 'GROUP BY', 'ORDER BY DESC'],
+      hint:'NOT IN은 IN의 반대예요. 특정 값들을 제외하고 나머지를 가져와요.\n<> 연산자도 같은 역할: product_type <> \'MEMBERSHIP_PHONING\'',
+      hintType:'info',
+      code:`/* 피지컬 상품군 전주 일별 판매액 (매출 내림차순) */
+SELECT
+  key_date,
+  product_type,
+  SUM(pay_amt_krw) AS total_amt
+FROM weverse-prod-analytics.we_mart.we_order
+WHERE part_date >= '2026-01-12'
+  AND part_date < '2026-01-19'
+  AND product_type NOT IN ('WDM', 'Digital_Membership', 'Membership')
+GROUP BY key_date, product_type
+ORDER BY total_amt DESC`
+    },
+  ],
+  ch1: [
+    {
+      id:'ch1-q1',
+      num:'Q1',
+      title:'2025년 월별 주요 KPI (PU% 포함)',
+      desc:'stats_we_m_kpi 테이블로 MAU/PU 등 핵심 지표 추출',
+      tables:['stats_we_m_kpi'],
+      funcs:['SAFE_DIVIDE', 'ORDER BY'],
+      hint:'SAFE_DIVIDE(a, b)는 b가 0이어도 에러 없이 NULL을 반환해요. 일반 나누기(/)는 0으로 나누면 에러 발생!',
+      hintType:'success',
+      code:`/* 2025년 월별 주요 KPI (PU% 포함) */
+SELECT
+  key_month,
+  nor_cnt   AS ru,         -- 등록유저수
+  mau_we    AS mau,        -- 월간 활성 유저
+  avg_dau_we AS avg_dau,   -- 일평균 DAU
+  nru_we    AS nru,        -- 신규 유저
+  pu_we     AS pu,         -- 구매 유저
+  SAFE_DIVIDE(pu_we, mau_we) * 100 AS pu_percent  -- PU / MAU
+FROM weverse-prod-analytics.we_mart.stats_we_m_kpi
+WHERE key_month >= '2025-01-01'
+  AND key_month < '2026-01-01'
+ORDER BY key_month DESC`
+    },
+    {
+      id:'ch1-q2',
+      num:'Q2',
+      title:'2025년 커뮤니티 오픈 아티스트 월별 KPI',
+      desc:'25년에 오픈한 아티스트만 필터링해서 월별 지표 조회',
+      tables:['stats_we_m_artist_kpi'],
+      funcs:['EXTRACT', 'LEFT', 'ORDER BY'],
+      hint:'날짜 필터 두 가지 방법:\n① EXTRACT(YEAR FROM part_month) = 2025\n② part_month >= \'2025-01-01\' AND part_month < \'2026-01-01\'\n두 번째 방법이 인덱스(파티션)를 더 잘 활용해요.',
+      hintType:'info',
+      code:`/* 2025년 커뮤니티 오픈 아티스트 월별 KPI */
+SELECT
+  part_month,
+  we_art_name,
+  nor_cnt       AS ru,
+  wv_visit_cnt  AS visitor,
+  pu_we         AS pu,
+  pay_amt_krw   AS revenue,
+  arpp          AS arpp,
+  comm_open_date
+FROM weverse-prod-analytics.we_mart.stats_we_m_artist_kpi
+WHERE part_month >= '2025-01-01'
+  AND part_month < '2026-01-01'
+  AND comm_open_date >= '2025-01-01'
+  AND comm_open_date < '2026-01-01'
+ORDER BY part_month, we_art_name`
+    },
+    {
+      id:'ch1-q3',
+      num:'Q3',
+      title:'TXT 2025년 WDM 월별 순판매액 및 PU',
+      desc:'순판매액 = 판매액 - 환불액. CASE WHEN으로 PU 계산',
+      tables:['we_order'],
+      funcs:['DATE_TRUNC', 'SUM', 'COUNT DISTINCT', 'CASE WHEN'],
+      hint:'순판매액 공식: SUM(pay_amt_krw) - SUM(cx_amt_krw)\nPU(결제유저) = COUNT(DISTINCT CASE WHEN is_pay = 1 THEN we_member_id END)\ncx_amt_krw가 NULL인 경우도 있어서 IFNULL 처리 권장!',
+      hintType:'success',
+      code:`/* TXT 2025년 WDM 월별 순판매액 및 PU */
+SELECT
+  DATE_TRUNC(key_date, MONTH) AS month,
+  SUM(IFNULL(pay_amt_krw, 0)) - SUM(IFNULL(cx_amt_krw, 0)) AS net_amt,
+  COUNT(DISTINCT CASE WHEN is_pay = 1 THEN we_member_id END) AS pu
+FROM weverse-prod-analytics.we_mart.we_order
+WHERE part_date >= '2025-01-01'
+  AND part_date < '2026-01-01'
+  AND we_art_name = 'TXT'
+  AND product_type = 'WDM'
+GROUP BY 1
+ORDER BY 1`
+    },
+    {
+      id:'ch1-q4',
+      num:'Q4',
+      title:'디지털/피지컬 묶음 판매액 (CASE WHEN vs IF)',
+      desc:'product_type을 두 그룹으로 묶어서 비교하는 두 가지 방법',
+      tables:['we_order'],
+      funcs:['CASE WHEN', 'IF', 'GROUP BY'],
+      hint:'CASE WHEN: 조건이 많을 때 유용 (여러 분기)\nIF: 조건이 2개(true/false)일 때 더 간결\n결과는 같아요!',
+      hintType:'info',
+      code:`/* 디지털/피지컬 묶음 판매액 - 두 방법 비교 */
+SELECT
+  /* 방법1: CASE WHEN */
+  CASE WHEN product_type IN ('WDM', 'Digital_Membership', 'Membership')
+       THEN 'digital' ELSE 'physical'
+  END AS cat,
+  /* 방법2: IF (더 간결) */
+  IF(product_type IN ('WDM', 'Digital_Membership', 'Membership'), 'digital', 'physical') AS cat2,
+  SUM(pay_amt_krw) AS total_amt
+FROM weverse-prod-analytics.we_mart.we_order
+WHERE part_date = '2026-01-01'
+GROUP BY 1, 2`
+    },
+    {
+      id:'ch1-q5',
+      num:'Q5',
+      title:'최근 3년 연도별 순판매액',
+      desc:'EXTRACT로 연도 추출, 연간 집계',
+      tables:['we_order'],
+      funcs:['EXTRACT', 'DATE_TRUNC', 'SUM IFNULL'],
+      hint:'EXTRACT(YEAR FROM key_date): 날짜에서 연도만 추출\nDATE_TRUNC(key_date, YEAR): 해당 연도 1월 1일로 절삭\n둘 다 GROUP BY에 쓸 수 있어요.',
+      hintType:'info',
+      code:`/* 최근 3년 연도별 순판매액 */
+SELECT
+  EXTRACT(YEAR FROM key_date) AS year,
+  SUM(IFNULL(pay_amt_krw, 0)) - SUM(IFNULL(cx_amt_krw, 0)) AS net_amt
+FROM weverse-prod-analytics.we_mart.we_order
+WHERE part_date BETWEEN '2023-01-01' AND '2025-12-31'
+GROUP BY 1
+ORDER BY 1`
+    },
+    {
+      id:'ch1-q6',
+      num:'Q6',
+      title:'BTS ARIRANG 앨범 일본 판매 건수',
+      desc:'UPPER + LIKE로 상품명 텍스트 검색',
+      tables:['we_order'],
+      funcs:['UPPER', 'LIKE', 'SUM'],
+      hint:'UPPER(컬럼명) LIKE \'%ARIRANG%\'\n→ 대소문자 구분 없이 검색 가능!\n%는 와일드카드: %ARIRANG% = 앞뒤로 뭐가 와도 됨',
+      hintType:'info',
+      code:`/* BTS ARIRANG 앨범 일본 판매 건수 */
+SELECT SUM(pay_album_qty) AS total_qty
+FROM weverse-prod-analytics.we_mart.we_order
+WHERE part_date BETWEEN '2026-01-12' AND '2026-01-18'
+  AND we_art_name = 'BTS'
+  AND ctry_code = 'JP'
+  AND product_type = 'ALBUM'
+  AND UPPER(goods_name) LIKE '%ARIRANG%'`
+    },
+    {
+      id:'ch1-q7',
+      num:'Q7',
+      title:'D1/D7/D30 리텐션 조회 (코호트 기반)',
+      desc:'stats_we_t_cohort_retention 테이블로 가입 코호트 기준 D1/D7/D30 리텐션율 조회',
+      tables:['stats_we_t_cohort_retention'],
+      funcs:['SAFE_DIVIDE', 'CASE WHEN', 'EXTRACT ISOWEEK', 'DATE_TRUNC ISOWEEK'],
+      hint:'리텐션 테이블 필터 조건:\n- service_code = \'WV\' (위버스)\n- we_art_id = -9999 (전체 아티스트)\n- ctry_code = \'TOTAL\' (전체 국가)\n- date_type = \'D\' (일별 코호트)\n- cohort_type = \'SERVICE_JOIN\' (서비스 가입 기준)\n- dur IN (1, 7, 30): D1 / D7 / D30\n\n리텐션율 계산: SAFE_DIVIDE(cnt_cohort_vst_user, cnt_cohort_base_user)',
+      hintType:'success',
+      code:`/* D1 / D7 / D30 리텐션 조회 (코호트 기반) */
+SELECT
+  CAST(cohort_date AS DATE) AS key_date,
+  EXTRACT(ISOWEEK FROM cohort_date) AS week_day_num,
+  CASE
+    WHEN dur = 1  THEN 'D1 ret'
+    WHEN dur = 7  THEN 'D7 ret'
+    WHEN dur = 30 THEN 'D30 ret'
+  END AS metric_key,
+  SAFE_DIVIDE(cnt_cohort_vst_user, cnt_cohort_base_user) AS value
+FROM weverse-prod-analytics.we_mart.stats_we_t_cohort_retention
+WHERE vst_date >= DATE_TRUNC(DATE(EXTRACT(ISOYEAR FROM CURRENT_DATE()) - 1, 1, 4), ISOWEEK)
+  AND date_type = 'D'
+  AND dur IN (1, 7, 30, 60, 120)
+  AND service_code = 'WV'
+  AND we_art_id = -9999
+  AND ctry_code = 'TOTAL'
+  AND cohort_type = 'SERVICE_JOIN'
+GROUP BY 1, 2, 3, 4`
+    },
+    {
+      id:'ch1-q8',
+      num:'Q8',
+      title:'리스닝파티 파티수 및 참여자수',
+      desc:'stats_wv_d_party 테이블로 월간 리스닝파티 집계',
+      tables:['stats_wv_d_party'],
+      funcs:['SUM', 'GROUP BY'],
+      hint:'리스닝파티 테이블 필터:\n- we_art_id = -9999 (전체)\n- party_type = \'TOTAL\'\n- host_streaming_service = \'TOTAL\'',
+      hintType:'success',
+      code:`/* 26년 1월 리스닝파티 집계 */
+SELECT
+  key_month,
+  SUM(party_cnt) AS total_party_cnt,
+  SUM(usr_tt_m) AS total_participants
+FROM weverse-prod-analytics.we_mart.stats_wv_d_party
+WHERE part_date >= '2026-01-01'
+  AND part_date < '2026-02-01'
+  AND key_month = '2026-01-01'
+  AND we_art_id = -9999
+  AND party_type = 'TOTAL'
+  AND host_streaming_service = 'TOTAL'
+GROUP BY 1`
+    },
+  ],
+  ch2: [
+    {
+      id:'ch2-q1',
+      num:'Q1',
+      title:'월별 저작권료 관련 지표 (KR, GL/WEV 샵)',
+      desc:'한국 기준 저작권료 관련 판매 데이터 추출',
+      tables:['we_order'],
+      funcs:['DATE_TRUNC', 'GROUP BY', 'SUM'],
+      hint:'저작권료는 KR(한국) 국가 기준으로 계산해요.\nshop 컬럼으로 GL(글로벌) / WEV(위버스) 샵 구분 가능.',
+      hintType:'info',
+      code:`/* 월별 저작권료 관련 지표 (KR, 샵별) */
+SELECT
+  DATE_TRUNC(key_date, MONTH) AS mon,
+  product_type,
+  shop,
+  SUM(pay_amt_krw) AS total_amt
+FROM weverse-prod-analytics.we_mart.we_order
+WHERE part_date >= '2026-01-01'
+  AND ctry_code = 'KR'
+GROUP BY 1, 2, 3
+ORDER BY 1, 4 DESC`
+    },
+    {
+      id:'ch2-q2',
+      num:'Q2',
+      title:'월별 상품별 매출 비중 (윈도우 함수)',
+      desc:'서브쿼리 + 윈도우 함수로 전체 대비 비중 계산',
+      tables:['we_order'],
+      funcs:['서브쿼리', 'SUM OVER', 'PARTITION BY', 'FORMAT'],
+      hint:'윈도우 함수 sum(amt)over(partition by mon):\n→ mon별 전체 합계를 각 행에 붙여줘요\n→ 비중 = amt / sum(amt)over(partition by mon)',
+      hintType:'success',
+      code:`/* 월별 상품별 매출 비중 */
+SELECT
+  mon,
+  product_type,
+  amt,
+  SUM(amt) OVER (PARTITION BY mon) AS mon_total,
+  FORMAT('%.1f%%', amt / SUM(amt) OVER (PARTITION BY mon) * 100) AS ratio
+FROM (
+  SELECT
+    DATE_TRUNC(part_date, MONTH) AS mon,
+    product_type,
+    SUM(pay_amt_krw) AS amt
+  FROM weverse-prod-analytics.we_mart.we_order
+  WHERE part_date >= '2025-12-01'
+    AND part_date < '2026-02-01'
+  GROUP BY 1, 2
+)
+ORDER BY mon, amt DESC`
+    },
+    {
+      id:'ch2-q3',
+      num:'Q3',
+      title:'아티스트 그룹별 평균 체류시간',
+      desc:'멤버별 체류시간 집계 후, 그룹(아티스트)별로 다시 평균',
+      tables:['stats_wv_w_art_indi_comm_activity'],
+      funcs:['서브쿼리', 'AVG', 'DATE_TRUNC', 'NOT LIKE'],
+      hint:'UPPER(art_indi_name) NOT LIKE \'%OFFICIAL%\'\n→ 오피셜 계정 제외 (팬들만 포함)\n체류시간 단위: sess_dur (초 단위)',
+      hintType:'info',
+      code:`/* 아티스트 그룹별 평균 체류시간 */
+SELECT mon, we_art_name, AVG(avg_sess) AS group_avg_sess
+FROM (
+  SELECT
+    DATE_TRUNC(DATE(key_date), MONTH) AS mon,
+    we_art_name,
+    art_indi_id,
+    AVG(sess_dur) AS avg_sess
+  FROM weverse-prod-analytics.we_mart.stats_wv_w_art_indi_comm_activity
+  WHERE key_date >= '2025-01-01'
+    AND key_date <= '2025-12-31'
+    AND UPPER(art_indi_name) NOT LIKE '%OFFICIAL%'
+  GROUP BY 1, 2, 3
+)
+GROUP BY 1, 2
+ORDER BY 1, 3 DESC`
+    },
+    {
+      id:'ch2-q4',
+      num:'Q4',
+      title:'유저 월 체류시간 중위값 (PERCENTILE_CONT)',
+      desc:'서브쿼리로 유저별 집계 후 중위값 계산',
+      tables:['we_visit'],
+      funcs:['PERCENTILE_CONT', 'AVG OVER', 'PARTITION BY'],
+      hint:'평균(AVG)은 극단값에 민감해요.\n중위값(P50 = PERCENTILE_CONT(x, 0.5))이 더 현실적인 "일반 유저"를 나타내요.',
+      hintType:'success',
+      code:`/* 25년 유저 월 체류시간 중위값 */
+SELECT DISTINCT
+  key_month,
+  service_type,
+  AVG(user_sess_dur) OVER (PARTITION BY key_month, service_type) AS avg_dur,
+  PERCENTILE_CONT(user_sess_dur, 0.5) OVER (PARTITION BY key_month, service_type) AS median_dur
+FROM (
+  SELECT
+    DATE_TRUNC(key_date, MONTH) AS key_month,
+    service_type,
+    account_id,
+    SUM(sum_sess_dur) AS user_sess_dur
+  FROM weverse-prod-analytics.we_mart.we_visit
+  WHERE visit_type = 'USER'
+    AND key_date >= '2025-01-01'
+    AND key_date < '2025-12-01'
+    AND service_type = 'WV'
+  GROUP BY 1, 2, 3
+) AS x
+ORDER BY 1`
+    },
+  ],
+  ch3: [
+    {
+      id:'ch3-q1',
+      num:'Q1',
+      title:'아티스트 국가별 매출/방문자수/가입자수 (UNION ALL)',
+      desc:'세 가지 지표를 하나의 테이블로 합치는 UNION ALL 패턴',
+      tables:['stats_we_t_kpi_metric', 'stats_we_m_artist_kpi', 'we_artist'],
+      funcs:['UNION ALL', 'LEFT JOIN', 'CURRENT_DATE'],
+      hint:'UNION ALL은 여러 쿼리 결과를 세로로 쌓아요 (열 수, 타입이 같아야 함)\nUNION (중복제거) vs UNION ALL (중복허용, 더 빠름)\n실무에서는 cat 컬럼으로 지표 종류를 구분해요.',
+      hintType:'success',
+      code:`/* 아티스트별 매출+방문자+가입자 UNION ALL */
+SELECT a.*, DATE(b.comm_open_date) AS open_date, b.ctry_code
+FROM (
+  -- 매출
+  SELECT part_date AS part_month, 'revenue' AS cat,
+    a.we_art_id, b.we_art_name, SUM(a.net_pay_krw) AS value
+  FROM weverse-prod-analytics.we_mart.stats_we_t_kpi_metric a
+  LEFT JOIN (SELECT we_art_id, we_art_name FROM weverse-prod-analytics.we_mart.we_artist) b
+    ON a.we_art_id = b.we_art_id
+  WHERE date_type = 'M' AND service_code = 'TOTAL'
+    AND a.we_art_id <> -9999 AND extra_type = 'PRODUCT_TYPE' AND ctry_code = 'TOTAL'
+    AND part_date >= '2024-01-01' AND part_date < DATE_TRUNC(CURRENT_DATE(), MONTH)
+  GROUP BY 1,2,3,4
+
+  UNION ALL
+
+  -- 방문자수 (AU)
+  SELECT
+    part_date AS part_month,
+    '1_visitor' AS cat,
+    b.we_art_name,
+    metric_val AS value
+  FROM weverse-prod-analytics.we_mart.stats_we_t_kpi a
+  LEFT JOIN (SELECT we_art_id, we_art_name FROM weverse-prod-analytics.we_mart.we_artist) b
+    ON a.we_art_id = b.we_art_id
+  WHERE a.part_date >= '2024-01-01'
+    AND a.part_date < DATE_TRUNC(CURRENT_DATE(), MONTH)
+    AND a.date_type = 'M'
+    AND a.ctry_code = 'TOTAL'
+    AND a.we_art_id <> -9999
+    AND a.metric_key = 'AU'
+    AND a.service_code = 'WV'
+  GROUP BY 1,2,3,4
+
+  UNION ALL
+
+  -- 가입자수 (RU)
+  SELECT
+    part_date AS part_month,
+    '0_RU' AS cat,
+    b.we_art_name,
+    metric_val AS value
+  FROM weverse-prod-analytics.we_mart.stats_we_t_kpi a
+  LEFT JOIN (SELECT we_art_id, we_art_name FROM weverse-prod-analytics.we_mart.we_artist) b
+    ON a.we_art_id = b.we_art_id
+  WHERE a.part_date >= '2024-01-01'
+    AND a.part_date < DATE_TRUNC(CURRENT_DATE(), MONTH)
+    AND a.date_type = 'M'
+    AND a.ctry_code = 'TOTAL'
+    AND a.we_art_id <> -9999
+    AND a.metric_key = 'RU'
+    AND a.service_code = 'WV'
+  GROUP BY 1,2,3,4
+) a
+LEFT JOIN (
+  SELECT we_art_id, we_art_name, comm_open_date, ctry_code
+  FROM weverse-prod-analytics.we_mart.we_artist
+) b ON a.we_art_id = b.we_art_id`
+    },
+  ],
+  ch4: [
+    {
+      id:'ch4-q1',
+      num:'Q1',
+      title:'IR 지표 모음 (CTE - WITH절)',
+      desc:'live / comm / kpi 세 개 임시 테이블을 WITH절로 만들고 조합',
+      tables:['stats_wv_d_live_play', 'stats_wv_d_comm_join', 'stats_we_t_kpi_metric'],
+      funcs:['WITH (CTE)', 'LEFT JOIN', 'PARSE_DATE', 'DATE_TRUNC', 'DATE_SUB'],
+      hint:'WITH절(CTE)의 장점:\n① 쿼리가 길어져도 읽기 쉬움\n② 같은 서브쿼리를 여러 번 참조할 때 효율적\n③ 임시 테이블처럼 단계별로 데이터 처리 가능',
+      hintType:'success',
+      code:`/* IR 지표 모음 - CTE 패턴 */
+WITH
+live_numbers AS (
+  SELECT
+    DATE(DATE_TRUNC(part_date, MONTH)) AS part_month,
+    SUM(join_u_tt) AS play_user_liveonly,
+    SUM(join_cnt) AS play_cnt_liveonly,
+    COUNT(DISTINCT post_id) AS live_num
+  FROM weverse-prod-analytics.we_mart.stats_wv_d_live_play
+  WHERE part_date BETWEEN
+    PARSE_DATE('%Y-%m-%d', FORMAT_DATE('%Y-%m-%d', DATE_TRUNC(DATE_SUB(CURRENT_DATE(), INTERVAL 3 MONTH), QUARTER)))
+    AND PARSE_DATE('%Y-%m-%d', FORMAT_DATE('%Y-%m-%d', DATE_SUB(DATE_TRUNC(CURRENT_DATE(), QUARTER), INTERVAL 1 DAY)))
+  GROUP BY 1
+),
+
+comm_members AS (
+  SELECT
+    DATE_TRUNC(key_date, MONTH) AS part_month,
+    COUNT(DISTINCT we_art_id) AS comm_num,
+    SUM(wever_cnt) AS comm_wever_total
+  FROM weverse-prod-analytics.we_mart.stats_wv_d_comm_join
+  WHERE key_date BETWEEN
+    PARSE_DATE('%Y-%m-%d', FORMAT_DATE('%Y-%m-%d', DATE_TRUNC(DATE_SUB(CURRENT_DATE(), INTERVAL 3 MONTH), QUARTER)))
+    AND PARSE_DATE('%Y-%m-%d', FORMAT_DATE('%Y-%m-%d', DATE_SUB(DATE_TRUNC(CURRENT_DATE(), QUARTER), INTERVAL 1 DAY)))
+    AND key_date = LAST_DAY(key_date, MONTH)
+    AND we_art_id NOT IN (63,65,66,67,68,70)
+  GROUP BY 1
+),
+
+key_metrics AS (
+  SELECT
+    DATE_TRUNC(key_date, MONTH) AS part_month,
+    SUM(CASE WHEN date_type = 'M' THEN RU END) AS ru,
+    SUM(CASE WHEN date_type = 'M' THEN NRU END) AS nru,
+    SUM(CASE WHEN date_type = 'M' THEN AU END) AS mau_all,
+    AVG(CASE WHEN date_type = 'D' THEN AU END) AS avg_dau,
+    SUM(CASE WHEN date_type = 'M' THEN PAY_UU END) AS pay_uu,
+    SUM(CASE WHEN date_type = 'M' THEN NET_PAY_KRW END) AS net_amt,
+    SUM(CASE WHEN date_type = 'M' THEN USR_MINS END) AS usr_mins
+  FROM weverse-prod-analytics.we_mart.stats_we_t_kpi_metric
+  WHERE date_type IN ('M','D')
+    AND service_code = 'TOTAL' AND we_art_id = -9999
+    AND ctry_code = 'TOTAL' AND extra_type = 'TOTAL'
+  GROUP BY 1
+)
+
+SELECT
+  k.part_month, k.ru, k.nru, k.mau_all, k.avg_dau,
+  k.pay_uu, k.net_amt, k.usr_mins,
+  l.play_user_liveonly, l.play_cnt_liveonly, l.live_num,
+  c.comm_num, c.comm_wever_total
+FROM key_metrics k
+LEFT JOIN live_numbers l ON k.part_month = l.part_month
+LEFT JOIN comm_members c ON k.part_month = c.part_month
+ORDER BY k.part_month`
+    },
+  ],
+  chplus: [],
+  ref: [
+    {
+      id:'ref-q1',
+      num:'실무1',
+      title:'월별 리텐션 (M+3 기준)',
+      desc:'stats_wv_m_retention_cohort_ratio - 가입 3개월 후 리텐션',
+      tables:['stats_wv_m_retention_cohort_ratio'],
+      funcs:['DATE_ADD', 'WHERE'],
+      hint:'join_month는 가입 월 기준이에요.\nm_3 = 3개월 후 리텐션 비율 (0~100 값, /100 해서 사용)',
+      hintType:'info',
+      code:`/* 월별 M+3 리텐션 */
+SELECT
+  DATE_ADD(DATE(join_month), INTERVAL 3 MONTH) AS mon,
+  m_3 / 100 AS retention_3m
+FROM weverse-prod-analytics.we_mart.stats_wv_m_retention_cohort_ratio
+WHERE join_month <> 'TOTAL'
+  AND DATE(join_month) >= '2025-01-01'
+ORDER BY mon`
+    },
+    {
+      id:'ref-q2',
+      num:'실무2',
+      title:'적극 활동 유저 비율',
+      desc:'engaged_usr / cnt_usr로 활성 참여율 계산',
+      tables:['stats_wv_m_comm_engage_usr'],
+      funcs:['SUM', 'SAFE_DIVIDE', 'GROUP BY'],
+      hint:'we_art_id = -9999 → 전체 아티스트 기준 합산값이에요.',
+      hintType:'info',
+      code:`/* 적극활동 유저 비율 */
+SELECT
+  DATE(key_date) AS mon,
+  SUM(engaged_usr_m) / SUM(cnt_usr_m) AS active_ratio
+FROM weverse-prod-analytics.we_mart.stats_wv_m_comm_engage_usr
+WHERE DATE(key_date) = '2025-01-01'
+  AND we_art_id = -9999
+GROUP BY 1`
+    },
+    {
+      id:'ref-q3',
+      num:'실무3',
+      title:'입점 아티스트 수 (월 기준)',
+      desc:'커뮤니티 오픈/폐지 날짜 기준으로 활성 아티스트 수 계산',
+      tables:['we_calendar', 'we_artist'],
+      funcs:['LEFT JOIN', 'COUNT', 'DATE_ADD', 'IFNULL'],
+      hint:'테스트 커뮤니티 제외 리스트: comm_id NOT IN (12, 65, 66, 67, 68, 1000, 1001, 73, 142, 75, 190, 212, 233, 243, 242)\n매월 확인해서 업데이트가 필요해요!',
+      hintType:'warn',
+      code:`/* 입점 아티스트 수 (이전 달 기준) */
+SELECT mon, COUNT(1) AS artist_cnt
+FROM (
+  SELECT DATE_TRUNC(a.date, MONTH) AS mon, b.we_art_id
+  FROM weverse-prod-analytics.we_meta.we_calendar a
+  LEFT JOIN (
+    SELECT *, IFNULL(comm_deact_date, DATE '2999-12-31') AS inactive_date
+    FROM weverse-prod-analytics.we_mart.we_artist
+    WHERE comm_id NOT IN (12,65,66,67,68,1000,1001,73,142,75,190,212,233,243,242)
+  ) b ON a.date >= b.comm_open_date AND a.date <= b.inactive_date
+  WHERE EXTRACT(DAY FROM DATE_ADD(a.date, INTERVAL 1 DAY)) = 1
+    AND a.date > '2019-06-01'
+    AND a.date < DATE(TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 9 HOUR))
+)
+WHERE mon = DATE_ADD(DATE_TRUNC(CURRENT_DATE(), MONTH), INTERVAL -1 MONTH)
+GROUP BY 1`
+    },
+    {
+      id:'ref-q4',
+      num:'실무4',
+      title:'아티스트 평균 체류시간 (HYBE 기준)',
+      desc:'wecode/SOBO 조건으로 특정 소속 아티스트 필터',
+      tables:['stats_wv_w_art_indi_comm_activity', 'we_artist'],
+      funcs:['LEFT JOIN', 'AVG', 'NOT LIKE', 'IS NULL'],
+      hint:'b.we_art_id IS NULL → LEFT JOIN 후 NULL이면 조건에 없는 아티스트\n(= wecode 없거나 SOBO 소속인 아티스트 제외된 것)',
+      hintType:'info',
+      code:`/* 아티스트 평균 체류시간 (HYBE 기준) */
+SELECT mon, AVG(avg_sess) AS avg_sess
+FROM (
+  SELECT DATE_TRUNC(DATE(key_date), MONTH) AS mon, a.we_art_id, art_indi_id, AVG(sess_dur) AS avg_sess
+  FROM weverse-prod-analytics.we_mart.stats_wv_w_art_indi_comm_activity AS a
+  LEFT JOIN (
+    SELECT we_art_id
+    FROM weverse-prod-analytics.we_mart.we_artist
+    WHERE comm_open_type != 'PUBLIC'
+      AND (wecode IS NULL OR company_code = 'SOBO')
+  ) AS b ON b.we_art_id = a.we_art_id
+  WHERE key_date >= '2026-01-01'
+    AND UPPER(a.art_indi_name) NOT LIKE '%OFFICIAL%'
+    AND b.we_art_id IS NULL
+  GROUP BY 1, 2, 3
+)
+GROUP BY 1
+ORDER BY 1`
+    },
+    {
+      id:'ref-q5',
+      num:'실무5',
+      title:'리스닝파티 월간 집계',
+      desc:'월별 파티수 및 참여자수 조회',
+      tables:['stats_wv_d_party'],
+      funcs:['SUM', 'GROUP BY'],
+      hint:'',
+      hintType:'info',
+      code:`/* 리스닝파티 월간 집계 */
+SELECT
+  DATE(key_month) AS mon,
+  SUM(party_cnt) AS total_party_cnt,
+  SUM(usr_tt_m) AS total_party_users
+FROM weverse-prod-analytics.we_mart.stats_wv_d_party
+WHERE we_art_id = -9999
+  AND party_type = 'TOTAL'
+  AND host_streaming_service = 'TOTAL'
+  AND part_date >= '2025-01-01'
+GROUP BY 1
+ORDER BY 1`
+    },
+    {
+      id:'ref-q6',
+      num:'실무6',
+      title:'하이브 아티스트 종합 지표 (RU/AU/Engage/매출)',
+      desc:'하이브 활성 아티스트 14개 대상, 4가지 지표를 UNION ALL로 합치고 MAU 기준 랭킹 부여',
+      tables:['we_artist', 'stats_we_t_kpi', 'stats_we_t_kpi_metric', 'stats_wv_m_comm_engage_usr'],
+      funcs:['WITH (CTE)', 'INNER JOIN', 'RANK() OVER', 'UNION ALL', 'CASE WHEN', 'CURRENT_DATE'],
+      hint:'쿼리 구조 3단계:\n① rk CTE: 하이브 활성 아티스트 14개 목록\n② ru_rk CTE: 직전 월 MAU 기준 아티스트 랭킹\n③ 본문: 4개 지표(RU/AU/Engage/매출) UNION ALL 후 랭킹 조인\n\ncat 컬럼 prefix(0_, 1_, 2_...)는 피벗/정렬용이에요.\nINNER JOIN rk = 하이브 아티스트만 필터링하는 핵심 조건!',
+      hintType:'success',
+      code:`/* 하이브 아티스트 종합 지표 - CTE + UNION ALL + RANK */
+WITH rk AS (
+  -- 하이브 활성 아티스트 14개 목록
+  SELECT we_art_id, we_art_name
+  FROM weverse-prod-analytics.we_mart.we_artist
+  WHERE is_hybe_art = 1
+    AND is_comm_enabled = 1
+    AND is_comm_fronzen = 0
+    AND we_art_id IN (2, 5, 1, 4, 46, 102, 111, 56, 1630, 119, 50, 64, 1709, 1722)
+  GROUP BY 1, 2
+),
+
+ru_rk AS (
+  -- 직전 월 MAU 기준 아티스트 랭킹
+  SELECT b.we_art_name, RANK() OVER (ORDER BY metric_val DESC) AS rk
+  FROM weverse-prod-analytics.we_mart.stats_we_t_kpi a
+  LEFT JOIN weverse-prod-analytics.we_mart.we_artist b ON a.we_art_id = b.we_art_id
+  INNER JOIN rk c ON a.we_art_id = c.we_art_id
+  WHERE part_date = DATE_ADD(DATE_TRUNC(CURRENT_DATE(), MONTH), INTERVAL -1 MONTH)
+    AND a.date_type = 'M' AND a.ctry_code = 'TOTAL'
+    AND a.we_art_id <> -9999 AND a.metric_key = 'AU' AND a.service_code = 'WV'
+)
+
+SELECT a.*, b.rk
+FROM (
+  -- 1. Digital / Physical 매출
+  SELECT
+    a.part_date AS part_month,
+    CASE WHEN extra_key NOT IN ('DIGITAL_MEMBERSHIP','MEMBERSHIP','WDM')
+         THEN '4_Physical' ELSE '3_Digital' END AS cat,
+    b.we_art_name,
+    SUM(a.net_pay_krw) AS value
+  FROM weverse-prod-analytics.we_mart.stats_we_t_kpi_metric a
+  LEFT JOIN (SELECT we_art_id, we_art_name FROM weverse-prod-analytics.we_mart.we_artist) b ON a.we_art_id = b.we_art_id
+  INNER JOIN rk c ON a.we_art_id = c.we_art_id
+  WHERE date_type = 'M' AND service_code = 'TOTAL'
+    AND a.we_art_id <> -9999 AND extra_type = 'PRODUCT_TYPE' AND ctry_code = 'TOTAL'
+    AND part_date >= '2024-01-01' AND part_date < DATE_TRUNC(CURRENT_DATE(), MONTH)
+  GROUP BY 1, 2, 3
+
+  UNION ALL
+
+  -- 2. Visitor (MAU/AU)
+  SELECT
+    part_date AS part_month, '1_visitor' AS cat,
+    b.we_art_name, metric_val AS value
+  FROM weverse-prod-analytics.we_mart.stats_we_t_kpi a
+  LEFT JOIN (SELECT we_art_id, we_art_name FROM weverse-prod-analytics.we_mart.we_artist) b ON a.we_art_id = b.we_art_id
+  INNER JOIN rk c ON a.we_art_id = c.we_art_id
+  WHERE a.part_date >= '2024-01-01' AND a.part_date < DATE_TRUNC(CURRENT_DATE(), MONTH)
+    AND a.date_type = 'M' AND a.ctry_code = 'TOTAL'
+    AND a.we_art_id <> -9999 AND a.metric_key = 'AU' AND a.service_code = 'WV'
+  GROUP BY 1, 2, 3, 4
+
+  UNION ALL
+
+  -- 3. RU (누적 가입자)
+  SELECT
+    part_date AS part_month, '0_RU' AS cat,
+    b.we_art_name, metric_val AS value
+  FROM weverse-prod-analytics.we_mart.stats_we_t_kpi a
+  LEFT JOIN (SELECT we_art_id, we_art_name FROM weverse-prod-analytics.we_mart.we_artist) b ON a.we_art_id = b.we_art_id
+  INNER JOIN rk c ON a.we_art_id = c.we_art_id
+  WHERE a.part_date >= '2024-01-01' AND a.part_date < DATE_TRUNC(CURRENT_DATE(), MONTH)
+    AND a.date_type = 'M' AND a.ctry_code = 'TOTAL'
+    AND a.we_art_id <> -9999 AND a.metric_key = 'RU' AND a.service_code = 'WV'
+  GROUP BY 1, 2, 3, 4
+
+  UNION ALL
+
+  -- 4. Engage (참여율 = 적극활동유저 / 전체유저)
+  SELECT
+    key_date AS part_month, '2_engage' AS cat,
+    b.we_art_name,
+    SUM(engaged_usr_m) / SUM(cnt_usr_m) AS value
+  FROM weverse-prod-analytics.we_mart.stats_wv_m_comm_engage_usr a
+  INNER JOIN rk c ON a.we_art_id = c.we_art_id
+  LEFT JOIN (SELECT we_art_id, we_art_name FROM weverse-prod-analytics.we_mart.we_artist) b ON a.we_art_id = b.we_art_id
+  WHERE key_date >= '2024-01-01' AND key_date < DATE_TRUNC(CURRENT_DATE(), MONTH)
+    AND a.we_art_id <> -9999
+  GROUP BY 1, 2, 3
+) a
+LEFT JOIN ru_rk b ON a.we_art_name = b.we_art_name`
+    },
+    {
+      id:'ref-q7',
+      num:'실무7',
+      title:'디지털 TOP30 아티스트 종합 지표 (매출/AU/Engage)',
+      desc:'최근 12개월 디지털 순매출 기준 TOP30 선정 후 3가지 지표를 UNION ALL로 합치기',
+      tables:['we_artist', 'stats_we_t_kpi', 'stats_we_t_kpi_metric', 'stats_wv_m_comm_engage_usr'],
+      funcs:['WITH (CTE)', 'RANK() OVER', 'LIMIT', 'INNER JOIN', 'UNION ALL', 'DATE_ADD'],
+      hint:'하이브 쿼리(실무6)와 핵심 차이:\n① rk 선정 기준: 고정 아티스트 목록 → 최근 12개월 디지털 순매출 TOP30 (동적)\n② extra_key IN (\'DIGITAL_MEMBERSHIP\',\'MEMBERSHIP\',\'WDM\') 으로 디지털만 집계\n③ RU 없음 (매출/AU/Engage 3개 지표)\n\n날짜 범위 자동 계산:\nINTERVAL -12 MONTH ~ INTERVAL -1 MONTH\n→ 항상 직전 12개월 기준으로 TOP30이 갱신돼요!',
+      hintType:'success',
+      code:`/* 디지털 TOP30 아티스트 종합 지표 */
+WITH rk AS (
+  -- 최근 12개월 디지털 순매출 기준 TOP30
+  SELECT we_art_id, RANK() OVER (ORDER BY net DESC) AS rk
+  FROM (
+    SELECT a.we_art_id, b.we_art_name, SUM(net_pay_krw) AS net
+    FROM weverse-prod-analytics.we_mart.stats_we_t_kpi_metric a
+    LEFT JOIN (SELECT we_art_id, we_art_name FROM weverse-prod-analytics.we_mart.we_artist) b ON a.we_art_id = b.we_art_id
+    WHERE date_type = 'M' AND service_code = 'TOTAL'
+      AND a.we_art_id NOT IN (-9999, 69, 36)
+      AND extra_type = 'PRODUCT_TYPE' AND ctry_code = 'TOTAL'
+      AND DATE_TRUNC(part_date, MONTH) >= DATE_ADD(DATE_TRUNC(CURRENT_DATE(), MONTH), INTERVAL -12 MONTH)
+      AND DATE_TRUNC(part_date, MONTH) <= DATE_ADD(DATE_TRUNC(CURRENT_DATE(), MONTH), INTERVAL -1 MONTH)
+      AND extra_key IN ('DIGITAL_MEMBERSHIP', 'MEMBERSHIP', 'WDM')  -- 디지털만
+    GROUP BY 1, 2
+    ORDER BY 3 DESC
+    LIMIT 30
+  )
+)
+
+SELECT *
+FROM (
+  -- 1. Digital / Physical 매출
+  SELECT
+    a.part_date AS part_month,
+    CASE WHEN extra_key NOT IN ('DIGITAL_MEMBERSHIP','MEMBERSHIP','WDM')
+         THEN '4_Physical' ELSE '3_Digital' END AS cat,
+    b.we_art_name, c.rk,
+    SUM(a.net_pay_krw) AS value
+  FROM weverse-prod-analytics.we_mart.stats_we_t_kpi_metric a
+  LEFT JOIN (SELECT we_art_id, we_art_name FROM weverse-prod-analytics.we_mart.we_artist) b ON a.we_art_id = b.we_art_id
+  INNER JOIN rk c ON a.we_art_id = c.we_art_id
+  WHERE date_type = 'M' AND service_code = 'TOTAL'
+    AND a.we_art_id <> -9999 AND extra_type = 'PRODUCT_TYPE' AND ctry_code = 'TOTAL'
+    AND part_date >= '2024-01-01' AND part_date < DATE_TRUNC(CURRENT_DATE(), MONTH)
+  GROUP BY 1, 2, 3, 4
+
+  UNION ALL
+
+  -- 2. Visitor (MAU/AU)
+  SELECT
+    part_date AS part_month, '1_visitor' AS cat,
+    b.we_art_name, c.rk, metric_val AS value
+  FROM weverse-prod-analytics.we_mart.stats_we_t_kpi a
+  LEFT JOIN (SELECT we_art_id, we_art_name FROM weverse-prod-analytics.we_mart.we_artist) b ON a.we_art_id = b.we_art_id
+  INNER JOIN rk c ON a.we_art_id = c.we_art_id
+  WHERE a.part_date >= '2024-01-01' AND a.part_date < DATE_TRUNC(CURRENT_DATE(), MONTH)
+    AND a.date_type = 'M' AND a.ctry_code = 'TOTAL'
+    AND a.we_art_id <> -9999 AND a.metric_key = 'AU' AND a.service_code = 'WV'
+  GROUP BY 1, 2, 3, 4, 5
+
+  UNION ALL
+
+  -- 3. Engage (참여율)
+  SELECT
+    key_date AS part_month, '2_engage' AS cat,
+    b.we_art_name, c.rk,
+    SUM(engaged_usr_m) / SUM(cnt_usr_m) AS value
+  FROM weverse-prod-analytics.we_mart.stats_wv_m_comm_engage_usr a
+  INNER JOIN rk c ON a.we_art_id = c.we_art_id
+  LEFT JOIN (SELECT we_art_id, we_art_name FROM weverse-prod-analytics.we_mart.we_artist) b ON a.we_art_id = b.we_art_id
+  WHERE key_date >= '2024-01-01' AND key_date < DATE_TRUNC(CURRENT_DATE(), MONTH)
+    AND a.we_art_id <> -9999
+  GROUP BY 1, 2, 3, 4
+)`
+    },
+    {
+      id:'ref-q8',
+      num:'실무8',
+      title:'피지컬 TOP30 아티스트 종합 지표 (매출/AU/Engage)',
+      desc:'최근 12개월 피지컬 순매출 기준 TOP30 선정. 테스트 계정 제외 조건 포함',
+      tables:['we_artist', 'stats_we_t_kpi', 'stats_we_t_kpi_metric', 'stats_wv_m_comm_engage_usr'],
+      funcs:['WITH (CTE)', 'RANK() OVER', 'LIMIT', 'NOT IN', 'UNION ALL', 'DATE_ADD'],
+      hint:'디지털 TOP30(실무7)과의 차이:\n① extra_key NOT IN (...) → 피지컬만 집계 (디지컬 제외)\n② NOT IN 제외 목록: -9999, 69, 36, 135, 3, 1706, 143\n   (smtown, jisoo, gfriend, 위버스존 등 테스트/특수 계정)\n\n💡 제외 목록은 주기적으로 검토가 필요해요!',
+      hintType:'warn',
+      code:`/* 피지컬 TOP30 아티스트 종합 지표 */
+WITH rk AS (
+  -- 최근 12개월 피지컬 순매출 기준 TOP30
+  SELECT we_art_id, RANK() OVER (ORDER BY net DESC) AS rk
+  FROM (
+    SELECT a.we_art_id, b.we_art_name, SUM(net_pay_krw) AS net
+    FROM weverse-prod-analytics.we_mart.stats_we_t_kpi_metric a
+    LEFT JOIN (SELECT we_art_id, we_art_name FROM weverse-prod-analytics.we_mart.we_artist) b ON a.we_art_id = b.we_art_id
+    WHERE date_type = 'M' AND service_code = 'TOTAL'
+      AND a.we_art_id NOT IN (-9999, 69, 36, 135, 3, 1706, 143)  -- smtown, jisoo, gfriend, 위버스존 등 제외
+      AND extra_type = 'PRODUCT_TYPE' AND ctry_code = 'TOTAL'
+      AND DATE_TRUNC(part_date, MONTH) >= DATE_ADD(DATE_TRUNC(CURRENT_DATE(), MONTH), INTERVAL -12 MONTH)
+      AND DATE_TRUNC(part_date, MONTH) <= DATE_ADD(DATE_TRUNC(CURRENT_DATE(), MONTH), INTERVAL -1 MONTH)
+      AND extra_key NOT IN ('DIGITAL_MEMBERSHIP', 'MEMBERSHIP', 'WDM')  -- 피지컬만
+    GROUP BY 1, 2
+    ORDER BY 3 DESC
+    LIMIT 30
+  )
+)
+
+SELECT *
+FROM (
+  -- 1. Digital / Physical 매출
+  SELECT
+    a.part_date AS part_month,
+    CASE WHEN extra_key NOT IN ('DIGITAL_MEMBERSHIP','MEMBERSHIP','WDM')
+         THEN '4_Physical' ELSE '3_Digital' END AS cat,
+    b.we_art_name, c.rk,
+    SUM(a.net_pay_krw) AS value
+  FROM weverse-prod-analytics.we_mart.stats_we_t_kpi_metric a
+  LEFT JOIN (SELECT we_art_id, we_art_name FROM weverse-prod-analytics.we_mart.we_artist) b ON a.we_art_id = b.we_art_id
+  INNER JOIN rk c ON a.we_art_id = c.we_art_id
+  WHERE date_type = 'M' AND service_code = 'TOTAL'
+    AND a.we_art_id <> -9999 AND extra_type = 'PRODUCT_TYPE' AND ctry_code = 'TOTAL'
+    AND part_date >= '2024-01-01' AND part_date < DATE_TRUNC(CURRENT_DATE(), MONTH)
+  GROUP BY 1, 2, 3, 4
+
+  UNION ALL
+
+  -- 2. Visitor (MAU/AU)
+  SELECT
+    part_date AS part_month, '1_visitor' AS cat,
+    b.we_art_name, c.rk, metric_val AS value
+  FROM weverse-prod-analytics.we_mart.stats_we_t_kpi a
+  LEFT JOIN (SELECT we_art_id, we_art_name FROM weverse-prod-analytics.we_mart.we_artist) b ON a.we_art_id = b.we_art_id
+  INNER JOIN rk c ON a.we_art_id = c.we_art_id
+  WHERE a.part_date >= '2024-01-01' AND a.part_date < DATE_TRUNC(CURRENT_DATE(), MONTH)
+    AND a.date_type = 'M' AND a.ctry_code = 'TOTAL'
+    AND a.we_art_id <> -9999 AND a.metric_key = 'AU' AND a.service_code = 'WV'
+  GROUP BY 1, 2, 3, 4, 5
+
+  UNION ALL
+
+  -- 3. Engage (참여율)
+  SELECT
+    key_date AS part_month, '2_engage' AS cat,
+    b.we_art_name, c.rk,
+    SUM(engaged_usr_m) / SUM(cnt_usr_m) AS value
+  FROM weverse-prod-analytics.we_mart.stats_wv_m_comm_engage_usr a
+  INNER JOIN rk c ON a.we_art_id = c.we_art_id
+  LEFT JOIN (SELECT we_art_id, we_art_name FROM weverse-prod-analytics.we_mart.we_artist) b ON a.we_art_id = b.we_art_id
+  WHERE key_date >= '2024-01-01' AND key_date < DATE_TRUNC(CURRENT_DATE(), MONTH)
+    AND a.we_art_id <> -9999
+  GROUP BY 1, 2, 3, 4
+)`
+    },
+    {
+      id:'ref-q9',
+      num:'실무9',
+      title:'상품별 잠정실적 (카테고리별 마진율 적용)',
+      desc:'상품을 6개 카테고리로 분류 후 마진율 적용한 조정 매출 계산. 전월/당월 비교',
+      tables:['we_order'],
+      funcs:['CASE WHEN (중첩)', 'SUM CASE WHEN', 'DATE_ADD', 'DATE_TRUNC', 'IFNULL', 'CURRENT_DATE'],
+      hint:'카테고리별 마진율:\n- 앨범(ALBUM) / 굿즈(MERCH) → 44%\n- 콘텐츠(VOD, LIVE_TICKET) → 55%\n- WDM / 디지털멤버십 → 100%\n- 멤버십(MEMBERSHIP) → 20%\n\n날짜 자동 계산:\n- month_2 = 직전 2개월 (자동)\n- month_1 = 직전 1개월 (자동)\n- mon = month_1 - month_2 (MoM 증감)\n\n⚠️ CASE WHEN이 중복으로 반복되는 구조예요. 리팩토링하면 CTE로 마진율을 한 번만 정의할 수 있어요.',
+      hintType:'warn',
+      code:`/* 상품별 잠정실적 - 카테고리별 마진율 적용 */
+SELECT
+  we_art_name,
+  cat,
+  product_type,
+  goods_name,
+  goods_lwr_cat_name,
+
+  -- 조정 매출: 직전 2개월 (month_2)
+  month_2 * CASE
+    WHEN cat = '1_ALBUM'              THEN 0.44
+    WHEN cat = '4_MERCH'              THEN 0.44
+    WHEN cat = '3_CONTENTS'           THEN 0.55
+    WHEN cat = '99_WDM'               THEN 1.00
+    WHEN cat = '99_DIGITAL_MEMBERSHIP'THEN 1.00
+    WHEN cat = '2_MEMBERSHIP'         THEN 0.20
+    ELSE 1
+  END AS month_2,
+
+  -- 조정 매출: 직전 1개월 (month_1)
+  month_1 * CASE
+    WHEN cat = '1_ALBUM'              THEN 0.44
+    WHEN cat = '4_MERCH'              THEN 0.44
+    WHEN cat = '3_CONTENTS'           THEN 0.55
+    WHEN cat = '99_WDM'               THEN 1.00
+    WHEN cat = '99_DIGITAL_MEMBERSHIP'THEN 1.00
+    WHEN cat = '2_MEMBERSHIP'         THEN 0.20
+    ELSE 1
+  END AS month_1,
+
+  -- MoM 증감 (month_1 - month_2)
+  (month_1 - month_2) * CASE
+    WHEN cat = '1_ALBUM'              THEN 0.44
+    WHEN cat = '4_MERCH'              THEN 0.44
+    WHEN cat = '3_CONTENTS'           THEN 0.55
+    WHEN cat = '99_WDM'               THEN 1.00
+    WHEN cat = '99_DIGITAL_MEMBERSHIP'THEN 1.00
+    WHEN cat = '2_MEMBERSHIP'         THEN 0.20
+    ELSE 1
+  END AS mon
+
+FROM (
+  SELECT
+    we_art_name,
+    CASE
+      WHEN product_type = 'WDM'                          THEN '99_WDM'
+      WHEN product_type = 'DIGITAL_MEMBERSHIP'           THEN '99_DIGITAL_MEMBERSHIP'
+      WHEN product_type = 'MEMBERSHIP'                   THEN '2_MEMBERSHIP'
+      WHEN product_type = 'ALBUM'                        THEN '1_ALBUM'
+      WHEN product_type IN ('VOD','LIVE_TICKET')         THEN '3_CONTENTS'
+      WHEN product_type IN ('DVD','POD','MD','CLOTHING','LIGHT_STICK','BOOK','MOD') THEN '4_MERCH'
+      ELSE '99_ELSE'
+    END AS cat,
+    product_type,
+    goods_name,
+    goods_lwr_cat_name,
+
+    -- 직전 2개월 순매출
+    SUM(CASE
+      WHEN part_date >= DATE_ADD(DATE_TRUNC(CURRENT_DATE(), MONTH), INTERVAL -2 MONTH)
+       AND part_date <  DATE_ADD(DATE_TRUNC(CURRENT_DATE(), MONTH), INTERVAL -1 MONTH)
+      THEN IFNULL(pay_amt_krw, 0) - IFNULL(cx_amt_krw, 0)
+      ELSE 0
+    END) AS month_2,
+
+    -- 직전 1개월 순매출
+    SUM(CASE
+      WHEN part_date >= DATE_ADD(DATE_TRUNC(CURRENT_DATE(), MONTH), INTERVAL -1 MONTH)
+       AND part_date <  DATE_TRUNC(CURRENT_DATE(), MONTH)
+      THEN IFNULL(pay_amt_krw, 0) - IFNULL(cx_amt_krw, 0)
+      ELSE 0
+    END) AS month_1
+
+  FROM weverse-prod-analytics.we_mart.we_order
+  WHERE part_date >= DATE_ADD(DATE_TRUNC(CURRENT_DATE(), MONTH), INTERVAL -2 MONTH)
+    AND part_date <  DATE_TRUNC(CURRENT_DATE(), MONTH)
+  GROUP BY 1, 2, 3, 4, 5
+)`
+    },
+    {
+      id:'ref-q10',
+      num:'실무10',
+      title:'리스닝파티 아티스트별 MoM 비교 (파티수/참여자/스트리밍)',
+      desc:'전월·전전월 피벗 후 MoM 증감 계산. 당월 방문자수(wv_visit_cnt) LEFT JOIN',
+      tables:['stats_wv_d_party', 'stats_we_m_artist_kpi'],
+      funcs:['SUM CASE WHEN (피벗)', 'LEFT JOIN', 'DATE_TRUNC', 'INTERVAL', 'IN'],
+      hint:'피벗 패턴 (PIVOT 없이 구현):\nSUM(CASE WHEN 월 = 전월 THEN 값 ELSE 0 END) AS mon_1\nSUM(CASE WHEN 월 = 전전월 THEN 값 ELSE 0 END) AS mon_2\n→ 한 행에 두 달치를 나란히 세워요\n\nMoM 계산: mon_1 - mon_2\n\n날짜 조건:\nDATE_TRUNC(CURRENT_DATE(), MONTH) - INTERVAL N MONTH\n→ 항상 자동으로 직전 N개월을 가리켜요',
+      hintType:'success',
+      code:`/* 리스닝파티 아티스트별 MoM 비교 */
+SELECT
+  a.*,
+  b.wv_visit_cnt,
+  (party_cnt_mon_1 - party_cnt_mon_2)         AS mom_party_cnt,
+  (usr_cc_w_mon_1 - usr_cc_w_mon_2)           AS mom_user_cnt,
+  (streaming_cnt_mon_1 - streaming_cnt_mon_2) AS mom_streaming_cnt
+FROM (
+  SELECT
+    we_art_name, we_art_id, party_type,
+
+    -- 파티수 전전월 / 전월
+    SUM(CASE WHEN DATE(key_month) = DATE(DATE_TRUNC(CURRENT_DATE(), MONTH) - INTERVAL 2 MONTH)
+             THEN party_cnt ELSE 0 END) AS party_cnt_mon_2,
+    SUM(CASE WHEN DATE(key_month) = DATE(DATE_TRUNC(CURRENT_DATE(), MONTH) - INTERVAL 1 MONTH)
+             THEN party_cnt ELSE 0 END) AS party_cnt_mon_1,
+
+    -- 참여자수 전전월 / 전월
+    SUM(CASE WHEN DATE(key_month) = DATE(DATE_TRUNC(CURRENT_DATE(), MONTH) - INTERVAL 2 MONTH)
+             THEN usr_tt_m ELSE 0 END) AS usr_cc_w_mon_2,
+    SUM(CASE WHEN DATE(key_month) = DATE(DATE_TRUNC(CURRENT_DATE(), MONTH) - INTERVAL 1 MONTH)
+             THEN usr_tt_m ELSE 0 END) AS usr_cc_w_mon_1,
+
+    -- 스트리밍수 전전월 / 전월
+    SUM(CASE WHEN DATE(key_month) = DATE(DATE_TRUNC(CURRENT_DATE(), MONTH) - INTERVAL 2 MONTH)
+             THEN prod_streaming_cnt ELSE 0 END) AS streaming_cnt_mon_2,
+    SUM(CASE WHEN DATE(key_month) = DATE(DATE_TRUNC(CURRENT_DATE(), MONTH) - INTERVAL 1 MONTH)
+             THEN prod_streaming_cnt ELSE 0 END) AS streaming_cnt_mon_1
+
+  FROM weverse-prod-analytics.we_mart.stats_wv_d_party
+  WHERE host_streaming_service = 'TOTAL'
+    AND DATE(key_month) IN (
+      DATE(DATE_TRUNC(CURRENT_DATE(), MONTH) - INTERVAL 2 MONTH),
+      DATE(DATE_TRUNC(CURRENT_DATE(), MONTH) - INTERVAL 1 MONTH)
+    )
+  GROUP BY 1, 2, 3
+  ORDER BY 1 DESC
+) a
+LEFT JOIN (
+  -- 전월 방문자수 조인
+  SELECT we_art_id, wv_visit_cnt
+  FROM weverse-prod-analytics.we_mart.stats_we_m_artist_kpi
+  WHERE part_month = DATE(DATE_TRUNC(CURRENT_DATE(), MONTH) - INTERVAL 1 MONTH)
+  GROUP BY 1, 2
+) b ON a.we_art_id = b.we_art_id`
+    },
+    {
+      id:'ref-q11',
+      num:'실무11',
+      title:'월별 구독수 MoM 비교 (WDM / 디지털멤버십 / FC)',
+      desc:'3개 구독 상품을 UNION ALL로 합치고 전월·전전월 피벗 후 MoM 증감 계산. 국가별 포함',
+      tables:['stats_wv_t_dm_subscr', 'stats_wv_t_dfc_subscr', 'stats_ws_d_fc_join', 'we_country'],
+      funcs:['UNION ALL', 'SUM CASE WHEN (피벗)', 'LAST_DAY', 'DATE_SUB', 'LEFT JOIN', 'IFNULL'],
+      hint:'구독 테이블 3종 정리:\n① stats_wv_t_dm_subscr → WDM (위버스 디지털 멤버십)\n② stats_wv_t_dfc_subscr → Digital Membership (디지털 팬클럽)\n③ stats_ws_d_fc_join → FC (위버스샵 팬클럽)\n\n날짜 조건: LAST_DAY(DATE_SUB(CURRENT_DATE(), INTERVAL N MONTH))\n→ 전월/전전월 말일을 자동으로 가리켜요\n\nFC는 TOTAL + 아티스트별 두 번 UNION해서 합계와 상세를 모두 포함해요',
+      hintType:'success',
+      code:`/* 월별 구독수 MoM 비교 - WDM / 디지털멤버십 / FC */
+SELECT
+  a.*,
+  month_1 - month_2 AS difference_mon1_mon2,
+  b.ctry_name
+FROM (
+  -- 1. WDM 구독수
+  SELECT
+    'WDM' AS cat, we_art_name, ctry_code,
+    SUM(CASE WHEN key_date = LAST_DAY(DATE_SUB(CURRENT_DATE(), INTERVAL 2 MONTH))
+             THEN CNT_SUBSCR ELSE 0 END) AS month_2,
+    SUM(CASE WHEN key_date = LAST_DAY(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH))
+             THEN CNT_SUBSCR ELSE 0 END) AS month_1
+  FROM weverse-prod-analytics.we_mart.stats_wv_t_dm_subscr
+  WHERE key_date IN (
+      LAST_DAY(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH)),
+      LAST_DAY(DATE_SUB(CURRENT_DATE(), INTERVAL 2 MONTH)))
+    AND dm_name = 'TOTAL' AND m_new_today = 'TOTAL' AND m_open_new = 'TOTAL'
+    AND date_type = 'D' AND subscr_type = 'TOTAL' AND subscr_type_dtl = 'TOTAL'
+    AND IFNULL(ctry_code, '') <> 'TOTAL'
+  GROUP BY 1, 2, 3
+
+  UNION ALL
+
+  -- 2. Digital Membership 구독수
+  SELECT
+    'Digital Membership' AS cat, we_art_name, ctry_code,
+    SUM(CASE WHEN key_date = LAST_DAY(DATE_SUB(CURRENT_DATE(), INTERVAL 2 MONTH))
+             THEN CNT_SUBSCR ELSE 0 END) AS month_2,
+    SUM(CASE WHEN key_date = LAST_DAY(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH))
+             THEN CNT_SUBSCR ELSE 0 END) AS month_1
+  FROM weverse-prod-analytics.we_mart.stats_wv_t_dfc_subscr
+  WHERE key_date IN (
+      LAST_DAY(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH)),
+      LAST_DAY(DATE_SUB(CURRENT_DATE(), INTERVAL 2 MONTH)))
+    AND date_type = 'D' AND subscr_type = 'TOTAL' AND subscr_type_dtl = 'TOTAL'
+    AND IFNULL(ctry_code, '') <> 'TOTAL' AND renewal_count = 'TOTAL'
+  GROUP BY 1, 2, 3
+
+  UNION ALL
+
+  -- 3. FC 전체 합계 (TOTAL)
+  SELECT
+    'FC' AS cat, 'TOTAL' AS we_art_name, 'TOTAL' AS ctry_code,
+    SUM(CASE WHEN part_date = LAST_DAY(DATE_SUB(CURRENT_DATE(), INTERVAL 2 MONTH))
+             THEN new_nor_cnt + renew_nor_cnt + change_nor_cnt + expire_nor_cnt + etc_nor_cnt
+             ELSE 0 END) AS month_2,
+    SUM(CASE WHEN part_date = LAST_DAY(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH))
+             THEN new_nor_cnt + renew_nor_cnt + change_nor_cnt + expire_nor_cnt + etc_nor_cnt
+             ELSE 0 END) AS month_1
+  FROM weverse-prod-analytics.we_mart.stats_ws_d_fc_join
+  WHERE part_date IN (
+      LAST_DAY(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH)),
+      LAST_DAY(DATE_SUB(CURRENT_DATE(), INTERVAL 2 MONTH)))
+  GROUP BY 1, 2, 3
+
+  UNION ALL
+
+  -- 4. FC 아티스트별
+  SELECT
+    'FC' AS cat, we_art_name, ctry_code,
+    SUM(CASE WHEN part_date = LAST_DAY(DATE_SUB(CURRENT_DATE(), INTERVAL 2 MONTH))
+             THEN new_nor_cnt + renew_nor_cnt + change_nor_cnt + expire_nor_cnt + etc_nor_cnt
+             ELSE 0 END) AS month_2,
+    SUM(CASE WHEN part_date = LAST_DAY(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH))
+             THEN new_nor_cnt + renew_nor_cnt + change_nor_cnt + expire_nor_cnt + etc_nor_cnt
+             ELSE 0 END) AS month_1
+  FROM weverse-prod-analytics.we_mart.stats_ws_d_fc_join
+  WHERE part_date IN (
+      LAST_DAY(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH)),
+      LAST_DAY(DATE_SUB(CURRENT_DATE(), INTERVAL 2 MONTH)))
+  GROUP BY 1, 2, 3
+) a
+LEFT JOIN weverse-prod-analytics.we_meta.we_country b ON a.ctry_code = b.ctry_code
+ORDER BY 1, 2, 3`
+    },
+    {
+      id:'ref-q12',
+      num:'실무12',
+      title:'월별 트래픽 지표 MoM 비교 (MAU / NRU / First커뮤니티 / 아티스트별 MAU)',
+      desc:'전체 MAU·NRU·첫 커뮤니티 가입·아티스트별 MAU 4개 지표를 UNION ALL로 합쳐 MoM 비교',
+      tables:['stats_we_t_kpi', 'stats_wv_d_comm_join', 'we_artist'],
+      funcs:['UNION ALL', 'SUM CASE WHEN (피벗)', 'DATE_TRUNC', 'INTERVAL', 'LEFT JOIN'],
+      hint:'지표별 테이블:\n① MAU(전체): stats_we_t_kpi · metric_key = \'AU\' · we_art_id = -9999\n② NRU(전체): stats_we_t_kpi · metric_key = \'NRU\' · we_art_id = -9999\n③ First커뮤니티: stats_wv_d_comm_join · first_comm_nru\n④ MAU(아티스트별): stats_we_t_kpi · service_code = \'WV\' · we_art_id <> -9999\n\n날짜 조건: DATE_TRUNC(CURRENT_DATE(), MONTH) - INTERVAL N MONTH\n→ 자동으로 전월/전전월 시작일을 계산해요',
+      hintType:'success',
+      code:`/* 월별 트래픽 지표 MoM 비교 */
+SELECT cat AS metric, we_art_name, month_2, month_1, (month_1 - month_2) AS mom
+FROM (
+  -- 1. MAU 전체
+  SELECT 'MAU' AS cat, 'TOTAL' AS we_art_name,
+    SUM(CASE WHEN DATE_TRUNC(DATE(part_date), MONTH) = DATE_TRUNC(CURRENT_DATE(), MONTH) - INTERVAL 2 MONTH
+             THEN metric_val ELSE 0 END) AS month_2,
+    SUM(CASE WHEN DATE_TRUNC(DATE(part_date), MONTH) = DATE_TRUNC(CURRENT_DATE(), MONTH) - INTERVAL 1 MONTH
+             THEN metric_val ELSE 0 END) AS month_1
+  FROM weverse-prod-analytics.we_mart.stats_we_t_kpi
+  WHERE DATE_TRUNC(DATE(part_date), MONTH) IN (
+      DATE_TRUNC(CURRENT_DATE(), MONTH) - INTERVAL 1 MONTH,
+      DATE_TRUNC(CURRENT_DATE(), MONTH) - INTERVAL 2 MONTH)
+    AND date_type = 'M' AND ctry_code = 'TOTAL' AND we_art_id = -9999
+    AND extra_type = 'TOTAL' AND service_code = 'TOTAL' AND metric_key = 'AU'
+  GROUP BY 1, 2
+
+  UNION ALL
+
+  -- 2. NRU 전체
+  SELECT 'NRU' AS cat, 'TOTAL' AS we_art_name,
+    SUM(CASE WHEN DATE_TRUNC(DATE(part_date), MONTH) = DATE_TRUNC(CURRENT_DATE(), MONTH) - INTERVAL 2 MONTH
+             THEN metric_val ELSE 0 END) AS month_2,
+    SUM(CASE WHEN DATE_TRUNC(DATE(part_date), MONTH) = DATE_TRUNC(CURRENT_DATE(), MONTH) - INTERVAL 1 MONTH
+             THEN metric_val ELSE 0 END) AS month_1
+  FROM weverse-prod-analytics.we_mart.stats_we_t_kpi
+  WHERE DATE_TRUNC(DATE(part_date), MONTH) IN (
+      DATE_TRUNC(CURRENT_DATE(), MONTH) - INTERVAL 1 MONTH,
+      DATE_TRUNC(CURRENT_DATE(), MONTH) - INTERVAL 2 MONTH)
+    AND date_type = 'M' AND ctry_code = 'TOTAL' AND we_art_id = -9999
+    AND extra_type = 'TOTAL' AND service_code = 'TOTAL' AND metric_key = 'NRU'
+  GROUP BY 1, 2
+
+  UNION ALL
+
+  -- 3. First 커뮤니티 가입 (아티스트별)
+  SELECT 'First' AS cat, we_art_name,
+    SUM(CASE WHEN part_date >= DATE_ADD(DATE_TRUNC(CURRENT_DATE(), MONTH), INTERVAL -2 MONTH)
+              AND part_date <  DATE_ADD(DATE_TRUNC(CURRENT_DATE(), MONTH), INTERVAL -1 MONTH)
+             THEN first_comm_nru ELSE 0 END) AS month_2,
+    SUM(CASE WHEN part_date >= DATE_ADD(DATE_TRUNC(CURRENT_DATE(), MONTH), INTERVAL -1 MONTH)
+              AND part_date <  DATE_TRUNC(CURRENT_DATE(), MONTH)
+             THEN first_comm_nru ELSE 0 END) AS month_1
+  FROM weverse-prod-analytics.we_mart.stats_wv_d_comm_join
+  WHERE part_date >= DATE_ADD(DATE_TRUNC(CURRENT_DATE(), MONTH), INTERVAL -2 MONTH)
+    AND part_date <  DATE_TRUNC(CURRENT_DATE(), MONTH)
+  GROUP BY 1, 2
+
+  UNION ALL
+
+  -- 4. MAU 아티스트별
+  SELECT 'MAU' AS cat, b.we_art_name,
+    SUM(CASE WHEN DATE_TRUNC(DATE(part_date), MONTH) = DATE_TRUNC(CURRENT_DATE(), MONTH) - INTERVAL 2 MONTH
+             THEN metric_val ELSE 0 END) AS month_2,
+    SUM(CASE WHEN DATE_TRUNC(DATE(part_date), MONTH) = DATE_TRUNC(CURRENT_DATE(), MONTH) - INTERVAL 1 MONTH
+             THEN metric_val ELSE 0 END) AS month_1
+  FROM weverse-prod-analytics.we_mart.stats_we_t_kpi a
+  LEFT JOIN weverse-prod-analytics.we_mart.we_artist b ON a.we_art_id = b.we_art_id
+  WHERE DATE_TRUNC(DATE(part_date), MONTH) IN (
+      DATE_TRUNC(CURRENT_DATE(), MONTH) - INTERVAL 1 MONTH,
+      DATE_TRUNC(CURRENT_DATE(), MONTH) - INTERVAL 2 MONTH)
+    AND date_type = 'M' AND ctry_code = 'TOTAL' AND a.we_art_id <> -9999
+    AND extra_type = 'TOTAL' AND service_code = 'WV' AND metric_key = 'AU'
+  GROUP BY 1, 2
+)`
+    },
+    {
+      id:'ref-q13',
+      num:'실무13',
+      title:'Superset Key Metric 구성 쿼리 (주간 누적 YoY)',
+      desc:'5개 소스를 UNION ALL로 합쳐 주간 누적값 + 전년 동기 비교(plot_date) 계산. Superset 대시보드 데이터소스',
+      tables:['stats_we_t_kpi', 'stats_we_d_visit', 'we_order', 'stats_we_t_cohort_retention', 'we_visit_weekly', 'stats_wv_d_comm_cross_join_agg'],
+      funcs:['SUM OVER (누적합)', 'UNION ALL', 'ISOYEAR/ISOWEEK', 'EXTRACT', 'DATE_TRUNC ISOWEEK', 'SAFE_DIVIDE', 'PERCENTILE/서브쿼리'],
+      hint:'쿼리 구조 (3단계 중첩):\n① 최내부: 5개 소스 UNION ALL → 주간 지표 raw\n② 중간: year_group + plot_date 추가 (YoY 비교용 날짜 변환)\n③ 최외부: SUM OVER(PARTITION BY year_group, metric_key) → 주간 누적합\n\n포함된 지표 (metric_key):\n- NET_PAY_KRW: 순매출 · PAY_UU_RATE: 결제율 · ARPPU_KRW\n- AU: MAU · NRU: 신규 · DFC_CNT / FC_CNT / DM_CNT: 구독\n- PARTY_STREAM: 리스닝파티 · NET_PAY_KRW_CONT: 조정매출\n- D1/D7/D30 ret: 리텐션 · L5: 고관여유저 · cross_comm: 겸덕\n- Best Month / Last Month / This Month: 방문자 누적 비교\n\nplot_date 로직:\n→ 올해 날짜를 전년도 동일 월/일로 변환해서 YoY 차트를 하나의 축에 겹쳐 그려요\n\nISO 주차(ISOWEEK) 주의:\n→ 연초/연말 경계에서 일반 WEEK과 다를 수 있어요',
+      hintType:'success',
+      code:`/* Superset Key Metric 구성 쿼리 - 주간 누적 YoY */
+
+-- 최외부: 주간 누적합(SUM OVER) 계산
+SELECT
+  plot_date,
+  year_group,
+  week_day_num,
+  DATE_TRUNC(key_date, WEEK(MONDAY)) AS week_starting_monday,
+  key_date,
+  metric_key,
+  value,
+  SUM(value) OVER (
+    PARTITION BY year_group, metric_key
+    ORDER BY week_day_num
+    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+  ) AS value_nu  -- 누적값
+FROM (
+
+  -- 중간: YoY 비교용 plot_date + year_group 추가
+  SELECT
+    DATE(
+      EXTRACT(YEAR FROM CURRENT_DATE()) - 1,
+      EXTRACT(MONTH FROM CAST(key_date AS DATE)),
+      EXTRACT(DAY FROM CAST(key_date AS DATE))
+    ) AS plot_date,  -- 전년도 동일 날짜로 변환 (YoY 차트용)
+    CAST(EXTRACT(ISOYEAR FROM key_date) AS STRING) AS year_group,
+    week_day_num,
+    key_date,
+    metric_key,
+    SUM(CAST(value AS FLOAT64)) AS value
+  FROM (
+
+    -- 1. KPI 지표 (주간): 매출/AU/NRU/구독/리스닝파티 등
+    SELECT
+      CAST(key_date AS DATE) AS key_date,
+      EXTRACT(ISOWEEK FROM key_date) AS week_day_num,
+      metric_key,
+      CAST(metric_val AS FLOAT64) AS value
+    FROM weverse-prod-analytics.we_mart.stats_we_t_kpi
+    WHERE key_date >= DATE_TRUNC(DATE(EXTRACT(ISOYEAR FROM CURRENT_DATE()) - 2, 1, 4), ISOWEEK)
+      AND service_code = 'TOTAL' AND we_art_id = -9999
+      AND extra_type = 'TOTAL' AND extra_key = 'TOTAL' AND ctry_code = 'TOTAL'
+      AND metric_key IN (
+        'NET_PAY_KRW', 'PAY_UU_RATE', 'ARPPU_KRW', 'AU', 'NRU',
+        'DFC_CNT', 'FC_CNT', 'DM_CNT', 'PARTY_STREAM'
+      )
+      AND date_type = 'W'
+    GROUP BY 1, 2, 3, 4
+
+    UNION ALL
+
+    -- 2. 방문자 누적 비교 (Best Month / Last Month / This Month)
+    SELECT key_date, week_day_num, metric_key,
+      SUM(daily_raw_value) OVER (PARTITION BY metric_key ORDER BY key_date) AS value
+    FROM (
+      SELECT
+        CAST(key_date AS DATE) AS key_date,
+        EXTRACT(DAY FROM key_date) AS week_day_num,
+        CASE
+          WHEN DATE_TRUNC(key_date, MONTH) = (
+            SELECT DATE_TRUNC(key_date, MONTH)
+            FROM weverse-prod-analytics.we_mart.stats_we_d_visit
+            WHERE we_art_id = -9999 AND service_type = 'TOTAL'
+              AND platform = 'TOTAL' AND OS = 'TOTAL' AND ctry_code = 'TOTAL' AND lang_code = 'TOTAL'
+              AND key_date < DATE_TRUNC(CURRENT_DATE(), MONTH)
+            GROUP BY 1 ORDER BY SUM(cnt_user_m) DESC LIMIT 1
+          ) THEN 'Best Month'
+          WHEN DATE_TRUNC(key_date, MONTH) = DATE_TRUNC(CURRENT_DATE(), MONTH) THEN 'This Month'
+          WHEN DATE_TRUNC(key_date, MONTH) = DATE_TRUNC(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH), MONTH) THEN 'Last Month'
+        END AS metric_key,
+        SUM(cnt_user_m) AS daily_raw_value
+      FROM weverse-prod-analytics.we_mart.stats_we_d_visit
+      WHERE we_art_id = -9999 AND service_type = 'TOTAL'
+        AND platform = 'TOTAL' AND OS = 'TOTAL' AND ctry_code = 'TOTAL' AND lang_code = 'TOTAL'
+        AND (
+          DATE_TRUNC(key_date, MONTH) = (
+            SELECT DATE_TRUNC(key_date, MONTH)
+            FROM weverse-prod-analytics.we_mart.stats_we_d_visit
+            WHERE we_art_id = -9999 AND key_date < DATE_TRUNC(CURRENT_DATE(), MONTH)
+              AND service_type = 'TOTAL' AND platform = 'TOTAL' AND OS = 'TOTAL'
+              AND ctry_code = 'TOTAL' AND lang_code = 'TOTAL'
+            GROUP BY 1 ORDER BY SUM(cnt_user_m) DESC LIMIT 1
+          )
+          OR DATE_TRUNC(key_date, MONTH) >= DATE_TRUNC(DATE_SUB(CURRENT_DATE(), INTERVAL 2 MONTH), MONTH)
+        )
+      GROUP BY 1, 2, 3
+    )
+    WHERE metric_key IS NOT NULL
+
+    UNION ALL
+
+    -- 3. 조정 매출 NET_PAY_KRW_CONT (마진율 적용)
+    SELECT
+      DATE_TRUNC(CAST(part_date AS DATE), ISOWEEK) AS key_date,
+      EXTRACT(ISOWEEK FROM part_date) AS week_day_num,
+      'NET_PAY_KRW_CONT' AS metric_key,
+      CAST(SUM(
+        (IFNULL(pay_amt_krw, 0) - IFNULL(cx_amt_krw, 0)) * CASE
+          WHEN product_type = 'ALBUM' THEN 0.44
+          WHEN product_type IN ('DVD','POD','MD','CLOTHING','LIGHT_STICK','BOOK','MOD') THEN 0.44
+          WHEN product_type IN ('VOD', 'LIVE_TICKET') THEN 0.55
+          WHEN product_type = 'MEMBERSHIP' THEN 0.20
+          ELSE 1.00
+        END
+      ) AS FLOAT64) AS value
+    FROM weverse-prod-analytics.we_mart.we_order
+    WHERE part_date >= DATE_TRUNC(DATE(EXTRACT(ISOYEAR FROM CURRENT_DATE()) - 2, 1, 4), ISOWEEK)
+    GROUP BY 1, 2, 3
+
+    UNION ALL
+
+    -- 4. 리텐션 (D1 / D7 / D30)
+    SELECT
+      CAST(cohort_date AS DATE) AS key_date,
+      EXTRACT(ISOWEEK FROM cohort_date) AS week_day_num,
+      CASE WHEN dur = 1 THEN 'D1 ret' WHEN dur = 7 THEN 'D7 ret' WHEN dur = 30 THEN 'D30 ret' END AS metric_key,
+      SAFE_DIVIDE(cnt_cohort_vst_user, cnt_cohort_base_user) AS value
+    FROM weverse-prod-analytics.we_mart.stats_we_t_cohort_retention
+    WHERE vst_date >= DATE_TRUNC(DATE(EXTRACT(ISOYEAR FROM CURRENT_DATE()) - 1, 1, 4), ISOWEEK)
+      AND date_type = 'D' AND dur IN (1, 7, 30, 60, 120)
+      AND service_code = 'WV' AND we_art_id = -9999 AND ctry_code = 'TOTAL'
+      AND cohort_type = 'SERVICE_JOIN'
+    GROUP BY 1, 2, 3, 4
+
+    UNION ALL
+
+    -- 5. 고관여 유저 L5 (주 5일 이상 방문)
+    SELECT
+      part_week AS key_date,
+      EXTRACT(ISOWEEK FROM part_week) AS week_day_num,
+      'L5' AS metric_key,
+      SAFE_DIVIDE(
+        COUNT(DISTINCT IF(this_w_days >= 5, we_member_id, NULL)),
+        COUNT(DISTINCT we_member_id)
+      ) AS value
+    FROM weverse-prod-analytics.we_mart.we_visit_weekly
+    WHERE part_week >= DATE_TRUNC(DATE(EXTRACT(ISOYEAR FROM CURRENT_DATE()) - 1, 1, 4), ISOWEEK)
+    GROUP BY 1, 2
+
+    UNION ALL
+
+    -- 6. 겸덕 비율 (2개 이상 커뮤니티 가입)
+    SELECT
+      DATE_TRUNC(CAST(part_date AS DATE), ISOWEEK) AS key_date,
+      EXTRACT(ISOWEEK FROM part_date) AS week_day_num,
+      'cross_comm' AS metric_key,
+      SUM(CASE WHEN join_comm_cnt >= 2 THEN user_cnt END) / SUM(user_cnt) AS value
+    FROM weverse-prod-analytics.we_mart.stats_wv_d_comm_cross_join_agg
+    WHERE part_date >= DATE_TRUNC(DATE(EXTRACT(ISOYEAR FROM CURRENT_DATE()) - 1, 1, 4), ISOWEEK)
+      AND EXTRACT(DAYOFWEEK FROM part_date) = 1  -- 일요일 (주 마지막)
+      AND we_art_id = -9999
+    GROUP BY 1, 2, 3
+
+    ORDER BY key_date DESC, metric_key ASC
+  )
+  GROUP BY 1, 2, 3, 4, 5
+)`
+    },
+    {
+      id:'ref-q14',
+      num:'실무14',
+      title:'주간 리스닝파티 WoW 비교 (파티수/참여자/스트리밍)',
+      desc:'전주·전전주 피벗 후 WoW 증감 계산. 전주 방문자수(wv_visit_cnt) LEFT JOIN',
+      tables:['stats_wv_d_party', 'stats_we_w_artist_kpi'],
+      funcs:['SUM CASE WHEN (피벗)', 'LEFT JOIN', 'WEEK(MONDAY)', 'INTERVAL DAY'],
+      hint:'월간 버전(실무10)과의 차이:\n- 기준: MONTH → WEEK(MONDAY) (월요일 기준 주차)\n- 날짜 단위: INTERVAL 1/2 MONTH → INTERVAL 7/14 DAY\n- 테이블: stats_we_m_artist_kpi → stats_we_w_artist_kpi\n- 지표: usr_tt_m → usr_tt_w\n\n주차 기준 날짜 계산:\n- 전주 시작: DATE_TRUNC(CURRENT_DATE(), WEEK(MONDAY)) - INTERVAL 7 DAY\n- 전전주 시작: DATE_TRUNC(CURRENT_DATE(), WEEK(MONDAY)) - INTERVAL 14 DAY',
+      hintType:'info',
+      code:`/* 주간 리스닝파티 WoW 비교 */
+SELECT
+  a.*,
+  wv_visit_cnt,
+  (party_cnt_week_1 - party_cnt_week_2)       AS wow_party_cnt,
+  (usr_cc_w_week_1 - usr_cc_w_week_2)         AS wow_user_cnt,
+  (streaming_cnt_week_1 - streaming_cnt_week_2) AS wow_streaming_cnt
+FROM (
+  SELECT
+    we_art_name, we_art_id, party_type,
+
+    -- 파티수 전전주 / 전주
+    SUM(CASE WHEN DATE(key_week) = DATE(DATE_TRUNC(CURRENT_DATE(), WEEK(MONDAY)) - INTERVAL 14 DAY)
+             THEN party_cnt ELSE 0 END) AS party_cnt_week_2,
+    SUM(CASE WHEN DATE(key_week) = DATE(DATE_TRUNC(CURRENT_DATE(), WEEK(MONDAY)) - INTERVAL 7 DAY)
+             THEN party_cnt ELSE 0 END) AS party_cnt_week_1,
+
+    -- 참여자수 전전주 / 전주
+    SUM(CASE WHEN DATE(key_week) = DATE(DATE_TRUNC(CURRENT_DATE(), WEEK(MONDAY)) - INTERVAL 14 DAY)
+             THEN usr_tt_w ELSE 0 END) AS usr_cc_w_week_2,
+    SUM(CASE WHEN DATE(key_week) = DATE(DATE_TRUNC(CURRENT_DATE(), WEEK(MONDAY)) - INTERVAL 7 DAY)
+             THEN usr_tt_w ELSE 0 END) AS usr_cc_w_week_1,
+
+    -- 스트리밍수 전전주 / 전주
+    SUM(CASE WHEN DATE(key_week) = DATE(DATE_TRUNC(CURRENT_DATE(), WEEK(MONDAY)) - INTERVAL 14 DAY)
+             THEN prod_streaming_cnt ELSE 0 END) AS streaming_cnt_week_2,
+    SUM(CASE WHEN DATE(key_week) = DATE(DATE_TRUNC(CURRENT_DATE(), WEEK(MONDAY)) - INTERVAL 7 DAY)
+             THEN prod_streaming_cnt ELSE 0 END) AS streaming_cnt_week_1
+
+  FROM weverse-prod-analytics.we_mart.stats_wv_d_party
+  WHERE host_streaming_service = 'TOTAL'
+    AND DATE(key_week) IN (
+      DATE(DATE_TRUNC(CURRENT_DATE(), WEEK(MONDAY)) - INTERVAL 14 DAY),
+      DATE(DATE_TRUNC(CURRENT_DATE(), WEEK(MONDAY)) - INTERVAL 7 DAY)
+    )
+  GROUP BY 1, 2, 3
+  ORDER BY 1 DESC
+) a
+LEFT JOIN (
+  -- 전주 방문자수 조인
+  SELECT we_art_id, wv_visit_cnt
+  FROM weverse-prod-analytics.we_mart.stats_we_w_artist_kpi
+  WHERE part_week = DATE(DATE_TRUNC(CURRENT_DATE(), WEEK(MONDAY)) - INTERVAL 7 DAY)
+  GROUP BY 1, 2
+) b ON a.we_art_id = b.we_art_id`
+    },
+    {
+      id:'ref-q15',
+      num:'실무15',
+      title:'주간 구독지표 WoW 비교 (WDM / 디지털멤버십 / FC)',
+      desc:'3개 구독 상품을 UNION ALL로 합치고 전주·전전주 피벗 후 WoW 증감 계산. 국가별 포함',
+      tables:['stats_wv_t_dm_subscr', 'stats_wv_t_dfc_subscr', 'stats_ws_d_fc_join', 'we_country'],
+      funcs:['UNION ALL', 'SUM CASE WHEN (피벗)', 'WEEK(MONDAY)', 'INTERVAL DAY', 'LEFT JOIN', 'IFNULL'],
+      hint:'월간 구독 버전(실무11)과의 차이:\n- 기준: LAST_DAY(월말) → WEEK(MONDAY) - INTERVAL 1/8 DAY (주말 일요일)\n- 날짜: 전주 마지막날 = WEEK(MONDAY) - INTERVAL 1 DAY (일요일)\n- 전전주 마지막날 = WEEK(MONDAY) - INTERVAL 8 DAY\n\n⚠️ 원본 쿼리의 "Degital Membership" 오타는 "Digital Membership"으로 수정됐어요',
+      hintType:'info',
+      code:`/* 주간 구독지표 WoW 비교 */
+SELECT
+  a.*,
+  week_1 - week_2 AS difference_week1_week2,
+  b.ctry_name
+FROM (
+  -- 1. WDM 구독수
+  SELECT 'WDM' AS cat, we_art_name, ctry_code,
+    SUM(CASE WHEN key_date = DATE_TRUNC(CURRENT_DATE(), WEEK(MONDAY)) - INTERVAL 8 DAY
+             THEN CNT_SUBSCR ELSE 0 END) AS week_2,
+    SUM(CASE WHEN key_date = DATE_TRUNC(CURRENT_DATE(), WEEK(MONDAY)) - INTERVAL 1 DAY
+             THEN CNT_SUBSCR ELSE 0 END) AS week_1
+  FROM weverse-prod-analytics.we_mart.stats_wv_t_dm_subscr
+  WHERE key_date IN (
+      DATE_TRUNC(CURRENT_DATE(), WEEK(MONDAY)) - INTERVAL 1 DAY,
+      DATE_TRUNC(CURRENT_DATE(), WEEK(MONDAY)) - INTERVAL 8 DAY)
+    AND dm_name = 'TOTAL' AND m_new_today = 'TOTAL' AND m_open_new = 'TOTAL'
+    AND date_type = 'D' AND subscr_type = 'TOTAL' AND subscr_type_dtl = 'TOTAL'
+    AND IFNULL(ctry_code, '') <> 'TOTAL'
+  GROUP BY 1, 2, 3
+
+  UNION ALL
+
+  -- 2. Digital Membership 구독수
+  SELECT 'Digital Membership' AS cat, we_art_name, ctry_code,
+    SUM(CASE WHEN key_date = DATE_TRUNC(CURRENT_DATE(), WEEK(MONDAY)) - INTERVAL 8 DAY
+             THEN CNT_SUBSCR ELSE 0 END) AS week_2,
+    SUM(CASE WHEN key_date = DATE_TRUNC(CURRENT_DATE(), WEEK(MONDAY)) - INTERVAL 1 DAY
+             THEN CNT_SUBSCR ELSE 0 END) AS week_1
+  FROM weverse-prod-analytics.we_mart.stats_wv_t_dfc_subscr
+  WHERE key_date IN (
+      DATE_TRUNC(CURRENT_DATE(), WEEK(MONDAY)) - INTERVAL 1 DAY,
+      DATE_TRUNC(CURRENT_DATE(), WEEK(MONDAY)) - INTERVAL 8 DAY)
+    AND date_type = 'D' AND subscr_type = 'TOTAL' AND subscr_type_dtl = 'TOTAL'
+    AND IFNULL(ctry_code, '') <> 'TOTAL' AND renewal_count = 'TOTAL'
+  GROUP BY 1, 2, 3
+
+  UNION ALL
+
+  -- 3. FC 아티스트별
+  SELECT 'FC' AS cat, we_art_name, ctry_code,
+    SUM(CASE WHEN part_date = DATE_TRUNC(CURRENT_DATE(), WEEK(MONDAY)) - INTERVAL 8 DAY
+             THEN new_nor_cnt + renew_nor_cnt + change_nor_cnt + expire_nor_cnt + etc_nor_cnt
+             ELSE 0 END) AS week_2,
+    SUM(CASE WHEN part_date = DATE_TRUNC(CURRENT_DATE(), WEEK(MONDAY)) - INTERVAL 1 DAY
+             THEN new_nor_cnt + renew_nor_cnt + change_nor_cnt + expire_nor_cnt + etc_nor_cnt
+             ELSE 0 END) AS week_1
+  FROM weverse-prod-analytics.we_mart.stats_ws_d_fc_join
+  WHERE part_date IN (
+      DATE_TRUNC(CURRENT_DATE(), WEEK(MONDAY)) - INTERVAL 1 DAY,
+      DATE_TRUNC(CURRENT_DATE(), WEEK(MONDAY)) - INTERVAL 8 DAY)
+    AND we_art_id <> -9999
+  GROUP BY 1, 2, 3
+
+  UNION ALL
+
+  -- 4. FC 전체 합계 (TOTAL)
+  SELECT 'FC' AS cat, 'TOTAL' AS we_art_name, ctry_code,
+    SUM(CASE WHEN part_date = DATE_TRUNC(CURRENT_DATE(), WEEK(MONDAY)) - INTERVAL 8 DAY
+             THEN new_nor_cnt + renew_nor_cnt + change_nor_cnt + expire_nor_cnt + etc_nor_cnt
+             ELSE 0 END) AS week_2,
+    SUM(CASE WHEN part_date = DATE_TRUNC(CURRENT_DATE(), WEEK(MONDAY)) - INTERVAL 1 DAY
+             THEN new_nor_cnt + renew_nor_cnt + change_nor_cnt + expire_nor_cnt + etc_nor_cnt
+             ELSE 0 END) AS week_1
+  FROM weverse-prod-analytics.we_mart.stats_ws_d_fc_join
+  WHERE part_date IN (
+      DATE_TRUNC(CURRENT_DATE(), WEEK(MONDAY)) - INTERVAL 1 DAY,
+      DATE_TRUNC(CURRENT_DATE(), WEEK(MONDAY)) - INTERVAL 8 DAY)
+  GROUP BY 1, 2, 3
+) a
+LEFT JOIN weverse-prod-analytics.we_meta.we_country b ON a.ctry_code = b.ctry_code
+ORDER BY 1, 2, 3`
+    },
+    {
+      id:'ref-q16',
+      num:'실무16',
+      title:'주간 트래픽 지표 WoW 비교 (WAU / NRU / First / 아티스트별 WAU·RU)',
+      desc:'전체 WAU·NRU·첫커뮤니티·아티스트별 WAU·RU 5개 지표를 UNION ALL로 합쳐 WoW 비교',
+      tables:['stats_we_t_kpi', 'stats_wv_d_comm_join', 'we_artist'],
+      funcs:['UNION ALL', 'SUM CASE WHEN (피벗)', 'WEEK(MONDAY)', 'DATE_ADD', 'LEFT JOIN'],
+      hint:'월간 트래픽(실무12)과의 차이:\n- 기준: MONTH → WEEK(MONDAY)\n- WAU: date_type = \'W\' · metric_key = \'AU\'\n- NRU: date_type = \'W\' · metric_key = \'NRU\'\n- 아티스트별 RU: metric_key = \'COMM_RU\'\n- First 커뮤니티: 주간 범위 DATE_ADD +(-7~-14 DAY)\n\n전전주: WEEK(MONDAY) - INTERVAL 14 DAY\n전주: WEEK(MONDAY) - INTERVAL 7 DAY',
+      hintType:'info',
+      code:`/* 주간 트래픽 지표 WoW 비교 */
+SELECT cat AS metric, we_art_name, week_2, week_1, (week_1 - week_2) AS wow
+FROM (
+  -- 1. WAU 전체
+  SELECT 'WAU' AS cat, 'TOTAL' AS we_art_name,
+    SUM(CASE WHEN part_date = DATE_TRUNC(CURRENT_DATE(), WEEK(MONDAY)) - INTERVAL 14 DAY
+             THEN metric_val ELSE 0 END) AS week_2,
+    SUM(CASE WHEN part_date = DATE_TRUNC(CURRENT_DATE(), WEEK(MONDAY)) - INTERVAL 7 DAY
+             THEN metric_val ELSE 0 END) AS week_1
+  FROM weverse-prod-analytics.we_mart.stats_we_t_kpi
+  WHERE part_date IN (
+      DATE_TRUNC(CURRENT_DATE(), WEEK(MONDAY)) - INTERVAL 7 DAY,
+      DATE_TRUNC(CURRENT_DATE(), WEEK(MONDAY)) - INTERVAL 14 DAY)
+    AND date_type = 'W' AND ctry_code = 'TOTAL' AND we_art_id = -9999
+    AND extra_type = 'TOTAL' AND service_code = 'TOTAL' AND metric_key = 'AU'
+  GROUP BY 1, 2
+
+  UNION ALL
+
+  -- 2. NRU 전체
+  SELECT 'NRU' AS cat, 'TOTAL' AS we_art_name,
+    SUM(CASE WHEN part_date = DATE_TRUNC(CURRENT_DATE(), WEEK(MONDAY)) - INTERVAL 14 DAY
+             THEN metric_val ELSE 0 END) AS week_2,
+    SUM(CASE WHEN part_date = DATE_TRUNC(CURRENT_DATE(), WEEK(MONDAY)) - INTERVAL 7 DAY
+             THEN metric_val ELSE 0 END) AS week_1
+  FROM weverse-prod-analytics.we_mart.stats_we_t_kpi
+  WHERE part_date IN (
+      DATE_TRUNC(CURRENT_DATE(), WEEK(MONDAY)) - INTERVAL 7 DAY,
+      DATE_TRUNC(CURRENT_DATE(), WEEK(MONDAY)) - INTERVAL 14 DAY)
+    AND date_type = 'W' AND ctry_code = 'TOTAL' AND we_art_id = -9999
+    AND extra_type = 'TOTAL' AND service_code = 'TOTAL' AND metric_key = 'NRU'
+  GROUP BY 1, 2
+
+  UNION ALL
+
+  -- 3. First 커뮤니티 가입 (아티스트별, 주간)
+  SELECT 'First' AS cat, we_art_name,
+    SUM(CASE WHEN part_date >= DATE_ADD(DATE_TRUNC(CURRENT_DATE(), WEEK(MONDAY)), INTERVAL -14 DAY)
+              AND part_date <  DATE_ADD(DATE_TRUNC(CURRENT_DATE(), WEEK(MONDAY)), INTERVAL -7 DAY)
+             THEN first_comm_nru ELSE 0 END) AS week_2,
+    SUM(CASE WHEN part_date >= DATE_ADD(DATE_TRUNC(CURRENT_DATE(), WEEK(MONDAY)), INTERVAL -7 DAY)
+              AND part_date <  DATE_TRUNC(CURRENT_DATE(), WEEK(MONDAY))
+             THEN first_comm_nru ELSE 0 END) AS week_1
+  FROM weverse-prod-analytics.we_mart.stats_wv_d_comm_join
+  WHERE part_date >= DATE_ADD(DATE_TRUNC(CURRENT_DATE(), WEEK(MONDAY)), INTERVAL -14 DAY)
+    AND part_date <  DATE_TRUNC(CURRENT_DATE(), WEEK(MONDAY))
+  GROUP BY 1, 2
+
+  UNION ALL
+
+  -- 4. WAU 아티스트별
+  SELECT 'WAU' AS cat, b.we_art_name,
+    SUM(CASE WHEN part_date = DATE_TRUNC(CURRENT_DATE(), WEEK(MONDAY)) - INTERVAL 14 DAY
+             THEN metric_val ELSE 0 END) AS week_2,
+    SUM(CASE WHEN part_date = DATE_TRUNC(CURRENT_DATE(), WEEK(MONDAY)) - INTERVAL 7 DAY
+             THEN metric_val ELSE 0 END) AS week_1
+  FROM weverse-prod-analytics.we_mart.stats_we_t_kpi a
+  LEFT JOIN weverse-prod-analytics.we_mart.we_artist b ON a.we_art_id = b.we_art_id
+  WHERE part_date IN (
+      DATE_TRUNC(CURRENT_DATE(), WEEK(MONDAY)) - INTERVAL 7 DAY,
+      DATE_TRUNC(CURRENT_DATE(), WEEK(MONDAY)) - INTERVAL 14 DAY)
+    AND date_type = 'W' AND ctry_code = 'TOTAL' AND a.we_art_id <> -9999
+    AND extra_type = 'TOTAL' AND service_code = 'WV' AND metric_key = 'AU'
+  GROUP BY 1, 2
+
+  UNION ALL
+
+  -- 5. RU (커뮤니티 가입) 아티스트별
+  SELECT 'RU' AS cat, b.we_art_name,
+    SUM(CASE WHEN part_date = DATE_TRUNC(CURRENT_DATE(), WEEK(MONDAY)) - INTERVAL 14 DAY
+             THEN metric_val ELSE 0 END) AS week_2,
+    SUM(CASE WHEN part_date = DATE_TRUNC(CURRENT_DATE(), WEEK(MONDAY)) - INTERVAL 7 DAY
+             THEN metric_val ELSE 0 END) AS week_1
+  FROM weverse-prod-analytics.we_mart.stats_we_t_kpi a
+  LEFT JOIN weverse-prod-analytics.we_mart.we_artist b ON a.we_art_id = b.we_art_id
+  WHERE part_date IN (
+      DATE_TRUNC(CURRENT_DATE(), WEEK(MONDAY)) - INTERVAL 7 DAY,
+      DATE_TRUNC(CURRENT_DATE(), WEEK(MONDAY)) - INTERVAL 14 DAY)
+    AND date_type = 'W' AND ctry_code = 'TOTAL' AND a.we_art_id <> -9999
+    AND extra_type = 'TOTAL' AND service_code = 'WV' AND metric_key = 'COMM_RU'
+  GROUP BY 1, 2
+)`
+    },
+    {
+      id:'ref-q17',
+      num:'실무17',
+      title:'D1/D7/D30 리텐션 (코호트 기반)',
+      desc:'stats_we_t_cohort_retention 테이블로 가입 코호트 기준 D1/D7/D30 리텐션율 조회. 주간 집계용 week_day_num 포함',
+      tables:['stats_we_t_cohort_retention'],
+      funcs:['SAFE_DIVIDE', 'CASE WHEN', 'EXTRACT ISOWEEK', 'DATE_TRUNC ISOWEEK'],
+      hint:'리텐션 테이블 필터:\n- service_code = \'WV\' (위버스)\n- we_art_id = -9999 (전체)\n- ctry_code = \'TOTAL\' (전체 국가)\n- date_type = \'D\' (일별 코호트)\n- cohort_type = \'SERVICE_JOIN\'\n- dur IN (1, 7, 30, 60, 120)\n\n리텐션율 = SAFE_DIVIDE(cnt_cohort_vst_user, cnt_cohort_base_user)\n\nweek_day_num(ISOWEEK)은 Superset 주간 차트 축으로 활용해요.',
+      hintType:'success',
+      code:`/* D1 / D7 / D30 리텐션 조회 (코호트 기반) */
+SELECT
+  CAST(cohort_date AS DATE) AS key_date,
+  EXTRACT(ISOWEEK FROM cohort_date) AS week_day_num,
+  CASE
+    WHEN dur = 1  THEN 'D1 ret'
+    WHEN dur = 7  THEN 'D7 ret'
+    WHEN dur = 30 THEN 'D30 ret'
+  END AS metric_key,
+  SAFE_DIVIDE(cnt_cohort_vst_user, cnt_cohort_base_user) AS value
+FROM weverse-prod-analytics.we_mart.stats_we_t_cohort_retention
+WHERE vst_date >= DATE_TRUNC(DATE(EXTRACT(ISOYEAR FROM CURRENT_DATE()) - 1, 1, 4), ISOWEEK)
+  AND date_type = 'D'
+  AND dur IN (1, 7, 30, 60, 120)
+  AND service_code = 'WV'
+  AND we_art_id = -9999
+  AND ctry_code = 'TOTAL'
+  AND cohort_type = 'SERVICE_JOIN'
+GROUP BY 1, 2, 3, 4`
+    },
+  ],
+};
+
+// ===== TEACHER Q&A =====
+const QA = {
+  partition_key: {
+    q:'파티션키가 뭔가요?',
+    a:`파티션키는 데이터를 날짜별로 나눠서 저장하는 <code>라벨</code>이에요 📅<br><br>
+위버스 테이블은 대부분 <code>part_date</code> 또는 <code>key_date</code>가 파티션키예요.<br><br>
+WHERE에 파티션키 조건을 꼭 넣어야 해요. 안 넣으면 수년치 데이터를 전부 스캔해서 엄청 느리고 비용도 많이 나와요!<br><br>
+✅ 좋음: <code>WHERE part_date = '2026-01-01'</code><br>
+❌ 나쁨: <code>WHERE key_date = '2026-01-01'</code> (part_date 없음)`
+  },
+  group_by: {
+    q:'GROUP BY 언제 써요?',
+    a:`<b>집계 함수(SUM, COUNT, AVG)</b>를 쓸 때 반드시 GROUP BY가 필요해요 📊<br><br>
+예시: "상품 유형별 판매액"을 구하려면<br>
+→ product_type으로 <code>GROUP BY</code> 후 <code>SUM(pay_amt_krw)</code><br><br>
+규칙: SELECT에 있는 컬럼 중 집계 함수가 아닌 것은 모두 GROUP BY에 넣어야 해요.<br><br>
+<code>GROUP BY 1, 2, 3</code> = SELECT의 1번째, 2번째, 3번째 컬럼 (숫자로 줄여 쓰는 방법)`
+  },
+  join_diff: {
+    q:'LEFT JOIN vs INNER JOIN 차이가 뭔가요?',
+    a:`<b>INNER JOIN</b>: 양쪽 테이블에 모두 있는 데이터만 ✅+✅<br>
+<b>LEFT JOIN</b>: 왼쪽 테이블은 전부, 오른쪽은 없으면 NULL ✅+❓<br><br>
+실무 예시:<br>
+- we_order에 아티스트 정보를 붙일 때: <code>LEFT JOIN we_artist</code><br>
+- 아티스트가 we_artist에 없어도 we_order 행이 사라지지 않아요<br><br>
+💡 <b>we_art_id IS NULL</b> 패턴:<br>
+LEFT JOIN 후 b.we_art_id IS NULL → 조인 안 된 행만 필터링!`
+  },
+  with_cte: {
+    q:'WITH절(CTE)은 왜 써요?',
+    a:`WITH절은 <b>임시 테이블</b>을 만드는 거예요 🏗️<br><br>
+장점 3가지:<br>
+① 복잡한 쿼리를 단계별로 쪼개서 읽기 쉬워요<br>
+② 같은 서브쿼리를 두 번 이상 쓸 때 한 번만 정의해도 돼요<br>
+③ 나중에 유지보수/수정이 쉬워요<br><br>
+구조: <code>WITH 이름 AS (SELECT ...), 이름2 AS (...) SELECT ...</code><br><br>
+Chapter 4의 IR 쿼리가 좋은 예시예요!`
+  },
+  net_amt: {
+    q:'순판매액은 어떻게 계산하나요?',
+    a:`순판매액 = 총판매액 - 환불액 💰<br><br>
+BigQuery 공식:<br>
+<code>SUM(IFNULL(pay_amt_krw, 0)) - SUM(IFNULL(cx_amt_krw, 0))</code><br><br>
+IFNULL을 쓰는 이유: cx_amt_krw(환불액)이 NULL인 경우가 많아요. NULL - 숫자 = NULL이 되어버려서 IFNULL(값, 0)으로 처리해요.<br><br>
+컬럼 설명:<br>
+- <code>pay_amt_krw</code>: 총 판매액<br>
+- <code>cx_amt_krw</code>: 환불/취소액<br>
+- <code>net_pay_krw</code>: 이미 순매출로 계산된 컬럼 (있는 경우)`
+  },
+  date_trunc: {
+    q:'DATE_TRUNC 어떻게 써요?',
+    a:`DATE_TRUNC(날짜, 단위)로 날짜를 특정 단위로 잘라요 📅<br><br>
+예시:<br>
+<code>DATE_TRUNC('2026-01-15', MONTH)</code> → <code>2026-01-01</code><br>
+<code>DATE_TRUNC('2026-01-15', YEAR)</code> → <code>2026-01-01</code><br>
+<code>DATE_TRUNC('2026-01-15', WEEK)</code> → <code>2026-01-12</code> (월요일)<br><br>
+월별 집계 시: <code>GROUP BY DATE_TRUNC(key_date, MONTH)</code><br><br>
+비교: <code>EXTRACT(YEAR FROM key_date)</code>는 숫자(2026)를 반환, DATE_TRUNC는 날짜(2026-01-01) 반환`
+  }
+};
+
+// ===== QUIZ DATA =====
+const QUIZZES = {
+  ch0: [
+    {
+      id:'ch0-ex1',
+      title:'we_order에서 2월 아티스트별 ALBUM 총 판매액 조회',
+      desc:'상품 필터 + 집계 기초 연습',
+      level:'기초',
+      hints:['테이블: we_mart.we_order','파티션키: part_date (2026년 2월)','사용 컬럼: we_art_name, product_type, pay_amt_krw','조건: product_type = \'ALBUM\'','집계: SUM + GROUP BY + ORDER BY 매출 내림차순'],
+      answer:`SELECT
+  we_art_name,
+  SUM(pay_amt_krw) AS total_amt
+FROM weverse-prod-analytics.we_mart.we_order
+WHERE part_date >= '2026-02-01'
+  AND part_date < '2026-03-01'
+  AND product_type = 'ALBUM'
+GROUP BY we_art_name
+ORDER BY total_amt DESC`
+    },
+    {
+      id:'ch0-ex2',
+      title:'디지털 vs 피지컬 상품 전주 일별 순매출 비교',
+      desc:'IN 조건으로 상품 분류 후 날짜별 집계',
+      level:'기초',
+      hints:['테이블: we_mart.we_order','디지털: WDM, Digital_Membership, Membership','파티션키: 전주 (DATE_TRUNC WEEK(MONDAY) 기준)','순매출: SUM(pay_amt_krw) - SUM(cx_amt_krw)','집계: key_date + product_type 기준 GROUP BY'],
+      answer:`SELECT
+  key_date,
+  CASE WHEN product_type IN ('WDM','Digital_Membership','Membership')
+       THEN 'digital' ELSE 'physical' END AS cat,
+  SUM(IFNULL(pay_amt_krw,0)) - SUM(IFNULL(cx_amt_krw,0)) AS net_amt
+FROM weverse-prod-analytics.we_mart.we_order
+WHERE part_date >= DATE_TRUNC(CURRENT_DATE(), WEEK(MONDAY)) - INTERVAL 7 DAY
+  AND part_date <  DATE_TRUNC(CURRENT_DATE(), WEEK(MONDAY))
+GROUP BY 1, 2
+ORDER BY key_date, cat`
+    },
+    {
+      id:'ch0-ex3',
+      title:'BTS 앨범 상품 전주 Top10 (판매 건수 기준)',
+      desc:'UPPER + LIKE 텍스트 검색 + LIMIT 조합',
+      level:'기초',
+      hints:['테이블: we_mart.we_order','조건: we_art_name = \'BTS\', product_type = \'ALBUM\'','사용 컬럼: goods_name, pay_album_qty','집계: SUM(pay_album_qty) 내림차순','LIMIT 10으로 Top10만 추출'],
+      answer:`SELECT
+  goods_name,
+  SUM(pay_album_qty) AS total_qty
+FROM weverse-prod-analytics.we_mart.we_order
+WHERE part_date >= DATE_TRUNC(CURRENT_DATE(), WEEK(MONDAY)) - INTERVAL 7 DAY
+  AND part_date <  DATE_TRUNC(CURRENT_DATE(), WEEK(MONDAY))
+  AND we_art_name = 'BTS'
+  AND product_type = 'ALBUM'
+GROUP BY goods_name
+ORDER BY total_qty DESC
+LIMIT 10`
+    },
+  ],
+  ch1: [
+    {
+      id:'ch1-ex1',
+      title:'잠정실적 마진율 참고 — 전월 상품 카테고리별 조정 순매출',
+      desc:'실무9 잠정실적 쿼리 패턴을 직접 구현해보기',
+      level:'기초',
+      hints:['테이블: we_mart.we_order','카테고리: ALBUM/MERCH → 44%, CONTENTS → 55%, WDM/DM → 100%, MEMBERSHIP → 20%','날짜: DATE_ADD(DATE_TRUNC(CURRENT_DATE(), MONTH), INTERVAL -1 MONTH)','CASE WHEN으로 카테고리 분류','SUM((pay_amt_krw - cx_amt_krw) * 마진율)'],
+      answer:`SELECT
+  CASE
+    WHEN product_type = 'ALBUM' THEN '1_ALBUM'
+    WHEN product_type IN ('DVD','POD','MD','CLOTHING','LIGHT_STICK','BOOK','MOD') THEN '4_MERCH'
+    WHEN product_type IN ('VOD','LIVE_TICKET') THEN '3_CONTENTS'
+    WHEN product_type IN ('WDM','DIGITAL_MEMBERSHIP') THEN '99_DIGITAL'
+    WHEN product_type = 'MEMBERSHIP' THEN '2_MEMBERSHIP'
+    ELSE '99_ELSE'
+  END AS cat,
+  SUM((IFNULL(pay_amt_krw,0) - IFNULL(cx_amt_krw,0)) * CASE
+    WHEN product_type = 'ALBUM' THEN 0.44
+    WHEN product_type IN ('DVD','POD','MD','CLOTHING','LIGHT_STICK','BOOK','MOD') THEN 0.44
+    WHEN product_type IN ('VOD','LIVE_TICKET') THEN 0.55
+    WHEN product_type = 'MEMBERSHIP' THEN 0.20
+    ELSE 1.00
+  END) AS adjusted_net
+FROM weverse-prod-analytics.we_mart.we_order
+WHERE part_date >= DATE_ADD(DATE_TRUNC(CURRENT_DATE(), MONTH), INTERVAL -1 MONTH)
+  AND part_date <  DATE_TRUNC(CURRENT_DATE(), MONTH)
+GROUP BY 1
+ORDER BY 2 DESC`
+    },
+    {
+      id:'ch1-ex2',
+      title:'2025년 월별 KPI에서 PU% 가장 높은 달 Top3',
+      desc:'SAFE_DIVIDE + ORDER BY로 비율 계산 후 순위 추출',
+      level:'기초',
+      hints:['테이블: we_mart.stats_we_m_kpi','PU% = SAFE_DIVIDE(pu_we, mau_we) * 100','기간: 2025년 전체','ORDER BY pu_percent DESC','LIMIT 3'],
+      answer:`SELECT
+  key_month,
+  pu_we,
+  mau_we,
+  SAFE_DIVIDE(pu_we, mau_we) * 100 AS pu_percent
+FROM weverse-prod-analytics.we_mart.stats_we_m_kpi
+WHERE key_month >= '2025-01-01'
+  AND key_month < '2026-01-01'
+ORDER BY pu_percent DESC
+LIMIT 3`
+    },
+    {
+      id:'ch1-ex3',
+      title:'전월 아티스트별 디지털/피지컬 매출 비교 (CASE WHEN 분류)',
+      desc:'실무9 카테고리 분류 패턴 + 아티스트 기준 GROUP BY',
+      level:'기초',
+      hints:['테이블: we_mart.we_order','디지털: WDM, DIGITAL_MEMBERSHIP, MEMBERSHIP','CASE WHEN으로 digital / physical 두 그룹 분류','집계: we_art_name + cat 기준 SUM(순매출)','날짜: 전월 자동 계산'],
+      answer:`SELECT
+  we_art_name,
+  CASE WHEN product_type IN ('WDM','DIGITAL_MEMBERSHIP','MEMBERSHIP')
+       THEN 'digital' ELSE 'physical' END AS cat,
+  SUM(IFNULL(pay_amt_krw,0) - IFNULL(cx_amt_krw,0)) AS net_amt
+FROM weverse-prod-analytics.we_mart.we_order
+WHERE part_date >= DATE_ADD(DATE_TRUNC(CURRENT_DATE(), MONTH), INTERVAL -1 MONTH)
+  AND part_date <  DATE_TRUNC(CURRENT_DATE(), MONTH)
+GROUP BY 1, 2
+ORDER BY we_art_name, cat`
+    },
+    {
+      id:'ch1-ex4',
+      title:'전주 D7 리텐션 × WAU 함께 조회',
+      desc:'stats_we_t_kpi에서 두 개 metric_key 한 번에 조회',
+      level:'기초',
+      hints:['테이블: we_mart.stats_we_t_kpi','metric_key IN (\'AU\', \'D7_RET\')','조건: service_code=\'WV\', we_art_id=-9999, ctry_code=\'TOTAL\', date_type=\'W\'','파티션키: 전주 기준'],
+      answer:`SELECT
+  part_date,
+  metric_key,
+  metric_val AS value
+FROM weverse-prod-analytics.we_mart.stats_we_t_kpi
+WHERE part_date = DATE_TRUNC(CURRENT_DATE(), WEEK(MONDAY)) - INTERVAL 7 DAY
+  AND service_code = 'WV'
+  AND we_art_id = -9999
+  AND ctry_code = 'TOTAL'
+  AND date_type = 'W'
+  AND extra_type = 'TOTAL'
+  AND metric_key IN ('AU', 'D7_RET')
+ORDER BY metric_key`
+    },
+  ],
+  ch2: [
+    {
+      id:'ch2-ex1',
+      title:'전월 아티스트별 매출 비중 계산 (윈도우 함수)',
+      desc:'실무7/8 패턴 참고 — SUM OVER로 전체 대비 비중',
+      level:'중급',
+      hints:['테이블: we_mart.we_order','서브쿼리에서 we_art_name별 SUM(pay_amt_krw) 집계','외부 쿼리에서 SUM(amt) OVER () 로 전체 합계','비중 = amt / SUM(amt) OVER () * 100','날짜: 전월 자동 계산'],
+      answer:`SELECT
+  we_art_name,
+  amt,
+  SUM(amt) OVER () AS total_amt,
+  ROUND(amt / SUM(amt) OVER () * 100, 2) AS ratio_pct
+FROM (
+  SELECT
+    we_art_name,
+    SUM(IFNULL(pay_amt_krw,0) - IFNULL(cx_amt_krw,0)) AS amt
+  FROM weverse-prod-analytics.we_mart.we_order
+  WHERE part_date >= DATE_ADD(DATE_TRUNC(CURRENT_DATE(), MONTH), INTERVAL -1 MONTH)
+    AND part_date <  DATE_TRUNC(CURRENT_DATE(), MONTH)
+  GROUP BY 1
+)
+ORDER BY amt DESC`
+    },
+    {
+      id:'ch2-ex2',
+      title:'전주 리스닝파티 아티스트별 전주 대비 WoW 증감률',
+      desc:'실무14 패턴 참고 — 피벗 후 증감률(%) 계산',
+      level:'중급',
+      hints:['테이블: we_mart.stats_wv_d_party','전주/전전주 피벗: SUM(CASE WHEN key_week = ... THEN party_cnt ELSE 0 END)','WoW 증감률: (week_1 - week_2) / week_2 * 100','조건: host_streaming_service = \'TOTAL\', we_art_id <> -9999','SAFE_DIVIDE로 0 나누기 방지'],
+      answer:`SELECT
+  we_art_name,
+  party_cnt_week_2,
+  party_cnt_week_1,
+  ROUND(SAFE_DIVIDE(party_cnt_week_1 - party_cnt_week_2, party_cnt_week_2) * 100, 1) AS wow_pct
+FROM (
+  SELECT
+    we_art_name,
+    SUM(CASE WHEN DATE(key_week) = DATE(DATE_TRUNC(CURRENT_DATE(), WEEK(MONDAY)) - INTERVAL 14 DAY)
+             THEN party_cnt ELSE 0 END) AS party_cnt_week_2,
+    SUM(CASE WHEN DATE(key_week) = DATE(DATE_TRUNC(CURRENT_DATE(), WEEK(MONDAY)) - INTERVAL 7 DAY)
+             THEN party_cnt ELSE 0 END) AS party_cnt_week_1
+  FROM weverse-prod-analytics.we_mart.stats_wv_d_party
+  WHERE host_streaming_service = 'TOTAL'
+    AND we_art_id <> -9999
+    AND DATE(key_week) IN (
+      DATE(DATE_TRUNC(CURRENT_DATE(), WEEK(MONDAY)) - INTERVAL 14 DAY),
+      DATE(DATE_TRUNC(CURRENT_DATE(), WEEK(MONDAY)) - INTERVAL 7 DAY))
+  GROUP BY 1
+)
+WHERE party_cnt_week_2 > 0
+ORDER BY wow_pct DESC`
+    },
+    {
+      id:'ch2-ex3',
+      title:'전월 유저 체류시간 중위값 vs 평균 비교',
+      desc:'PERCENTILE_CONT + AVG OVER로 중위값과 평균을 한 번에',
+      level:'중급',
+      hints:['테이블: we_mart.we_visit','유저별 합계: SUM(sum_sess_dur) GROUP BY account_id','외부 쿼리: AVG OVER() + PERCENTILE_CONT(0.5) OVER()','조건: visit_type=\'USER\', service_type=\'WV\'','DISTINCT로 중복 제거'],
+      answer:`SELECT DISTINCT
+  key_month,
+  AVG(user_sess_dur) OVER (PARTITION BY key_month) AS avg_dur,
+  PERCENTILE_CONT(user_sess_dur, 0.5) OVER (PARTITION BY key_month) AS median_dur
+FROM (
+  SELECT
+    DATE_TRUNC(key_date, MONTH) AS key_month,
+    account_id,
+    SUM(sum_sess_dur) AS user_sess_dur
+  FROM weverse-prod-analytics.we_mart.we_visit
+  WHERE visit_type = 'USER'
+    AND service_type = 'WV'
+    AND key_date >= DATE_ADD(DATE_TRUNC(CURRENT_DATE(), MONTH), INTERVAL -1 MONTH)
+    AND key_date <  DATE_TRUNC(CURRENT_DATE(), MONTH)
+  GROUP BY 1, 2
+)
+ORDER BY 1`
+    },
+  ],
+  ch3: [
+    {
+      id:'ch3-ex1',
+      title:'하이브 아티스트 14개 — 매출 + 방문자 UNION ALL',
+      desc:'실무6 패턴 참고 — 두 지표를 cat 컬럼으로 구분해서 합치기',
+      level:'중급',
+      hints:['테이블: stats_we_t_kpi_metric (매출), stats_we_m_artist_kpi (방문자)','하이브 아티스트 ID: (2,5,1,4,46,102,111,56,1630,119,50,64,1709,1722)','cat: \'revenue\' / \'visitor\'','INNER JOIN으로 하이브 아티스트만 필터','같은 컬럼 수/타입 맞춰서 UNION ALL'],
+      answer:`SELECT part_month, cat, we_art_name, value
+FROM (
+  SELECT
+    a.part_date AS part_month, 'revenue' AS cat,
+    b.we_art_name, SUM(a.net_pay_krw) AS value
+  FROM weverse-prod-analytics.we_mart.stats_we_t_kpi_metric a
+  LEFT JOIN (SELECT we_art_id, we_art_name FROM weverse-prod-analytics.we_mart.we_artist) b ON a.we_art_id = b.we_art_id
+  WHERE date_type = 'M' AND service_code = 'TOTAL'
+    AND a.we_art_id IN (2,5,1,4,46,102,111,56,1630,119,50,64,1709,1722)
+    AND extra_type = 'PRODUCT_TYPE' AND ctry_code = 'TOTAL'
+    AND part_date >= '2024-01-01' AND part_date < DATE_TRUNC(CURRENT_DATE(), MONTH)
+  GROUP BY 1,2,3
+
+  UNION ALL
+
+  SELECT
+    part_month, 'visitor' AS cat,
+    we_art_name, wv_visit_cnt AS value
+  FROM weverse-prod-analytics.we_mart.stats_we_m_artist_kpi
+  WHERE we_art_id IN (2,5,1,4,46,102,111,56,1630,119,50,64,1709,1722)
+    AND part_month >= '2024-01-01' AND part_month < DATE_TRUNC(CURRENT_DATE(), MONTH)
+)
+ORDER BY part_month, cat, we_art_name`
+    },
+    {
+      id:'ch3-ex2',
+      title:'전월 아티스트별 WDM 구독수 + 방문자수 JOIN',
+      desc:'구독 테이블과 KPI 테이블을 LEFT JOIN으로 합치기',
+      level:'중급',
+      hints:['테이블1: stats_wv_t_dm_subscr (WDM 구독)','테이블2: stats_we_m_artist_kpi (방문자)','JOIN 키: we_art_id','구독 조건: LAST_DAY(전월), dm_name=\'TOTAL\'...','방문자 조건: part_month = 전월'],
+      answer:`SELECT
+  a.we_art_name,
+  a.cnt_subscr AS wdm_subscr,
+  b.wv_visit_cnt
+FROM (
+  SELECT we_art_id, we_art_name, SUM(cnt_subscr) AS cnt_subscr
+  FROM weverse-prod-analytics.we_mart.stats_wv_t_dm_subscr
+  WHERE key_date = DATE_SUB(LAST_DAY(CURRENT_DATE()), INTERVAL 0 DAY)
+    AND dm_name = 'TOTAL' AND m_new_today = 'TOTAL' AND m_open_new = 'TOTAL'
+    AND date_type = 'D' AND subscr_type = 'TOTAL' AND subscr_type_dtl = 'TOTAL'
+    AND IFNULL(ctry_code,'') = 'TOTAL'
+  GROUP BY 1, 2
+) a
+LEFT JOIN (
+  SELECT we_art_id, wv_visit_cnt
+  FROM weverse-prod-analytics.we_mart.stats_we_m_artist_kpi
+  WHERE part_month = DATE_ADD(DATE_TRUNC(CURRENT_DATE(), MONTH), INTERVAL -1 MONTH)
+) b ON a.we_art_id = b.we_art_id
+ORDER BY wdm_subscr DESC`
+    },
+    {
+      id:'ch3-ex3',
+      title:'전월 아티스트별 매출/AU/구독 3개 지표 UNION ALL',
+      desc:'실무7 패턴으로 3개 지표를 하나의 테이블로 합치기',
+      level:'중급',
+      hints:['매출: stats_we_t_kpi_metric · cat = \'revenue\'','AU: stats_we_t_kpi · metric_key = \'AU\' · cat = \'visitor\'','WDM 구독: stats_wv_t_dm_subscr · cat = \'subscr\'','cat 컬럼으로 지표 구분','3개 SELECT 컬럼 수/타입 동일하게 맞추기'],
+      answer:`SELECT part_month, cat, we_art_name, value
+FROM (
+  SELECT a.part_date AS part_month, 'revenue' AS cat,
+    b.we_art_name, SUM(a.net_pay_krw) AS value
+  FROM weverse-prod-analytics.we_mart.stats_we_t_kpi_metric a
+  LEFT JOIN (SELECT we_art_id, we_art_name FROM weverse-prod-analytics.we_mart.we_artist) b ON a.we_art_id = b.we_art_id
+  WHERE date_type='M' AND service_code='TOTAL' AND a.we_art_id <> -9999
+    AND extra_type='PRODUCT_TYPE' AND ctry_code='TOTAL'
+    AND part_date >= DATE_ADD(DATE_TRUNC(CURRENT_DATE(),MONTH),INTERVAL -1 MONTH)
+    AND part_date < DATE_TRUNC(CURRENT_DATE(),MONTH)
+  GROUP BY 1,2,3
+
+  UNION ALL
+
+  SELECT part_date AS part_month, 'visitor' AS cat,
+    b.we_art_name, metric_val AS value
+  FROM weverse-prod-analytics.we_mart.stats_we_t_kpi a
+  LEFT JOIN (SELECT we_art_id, we_art_name FROM weverse-prod-analytics.we_mart.we_artist) b ON a.we_art_id = b.we_art_id
+  WHERE part_date >= DATE_ADD(DATE_TRUNC(CURRENT_DATE(),MONTH),INTERVAL -1 MONTH)
+    AND part_date < DATE_TRUNC(CURRENT_DATE(),MONTH)
+    AND date_type='M' AND ctry_code='TOTAL' AND a.we_art_id <> -9999
+    AND service_code='WV' AND metric_key='AU'
+  GROUP BY 1,2,3,4
+
+  UNION ALL
+
+  SELECT DATE_TRUNC(key_date,MONTH) AS part_month, 'subscr' AS cat,
+    we_art_name, SUM(cnt_subscr) AS value
+  FROM weverse-prod-analytics.we_mart.stats_wv_t_dm_subscr
+  WHERE key_date >= DATE_ADD(DATE_TRUNC(CURRENT_DATE(),MONTH),INTERVAL -1 MONTH)
+    AND key_date < DATE_TRUNC(CURRENT_DATE(),MONTH)
+    AND dm_name='TOTAL' AND date_type='D' AND subscr_type='TOTAL'
+  GROUP BY 1,2,3
+)
+ORDER BY part_month, cat, we_art_name`
+    },
+  ],
+  ch4: [
+    {
+      id:'ch4-ex1',
+      title:'최근 6개월 피지컬 매출 TOP10 아티스트 CTE 만들기',
+      desc:'실무8 패턴 참고 — 기간과 기준만 바꿔서 재구현',
+      level:'고급',
+      hints:['CTE rk: 최근 6개월 피지컬 순매출 TOP10','기간: INTERVAL -6 MONTH ~ INTERVAL -1 MONTH','피지컬: extra_key NOT IN (\'DIGITAL_MEMBERSHIP\',\'MEMBERSHIP\',\'WDM\')','제외: we_art_id NOT IN (-9999, 69, 36, 135, 3, 1706, 143)','RANK() OVER + LIMIT 10'],
+      answer:`WITH rk AS (
+  SELECT we_art_id, RANK() OVER (ORDER BY net DESC) AS rk
+  FROM (
+    SELECT a.we_art_id, SUM(net_pay_krw) AS net
+    FROM weverse-prod-analytics.we_mart.stats_we_t_kpi_metric a
+    WHERE date_type = 'M' AND service_code = 'TOTAL'
+      AND a.we_art_id NOT IN (-9999, 69, 36, 135, 3, 1706, 143)
+      AND extra_type = 'PRODUCT_TYPE' AND ctry_code = 'TOTAL'
+      AND DATE_TRUNC(part_date, MONTH) >= DATE_ADD(DATE_TRUNC(CURRENT_DATE(), MONTH), INTERVAL -6 MONTH)
+      AND DATE_TRUNC(part_date, MONTH) <= DATE_ADD(DATE_TRUNC(CURRENT_DATE(), MONTH), INTERVAL -1 MONTH)
+      AND extra_key NOT IN ('DIGITAL_MEMBERSHIP', 'MEMBERSHIP', 'WDM')
+    GROUP BY 1
+    ORDER BY 2 DESC
+    LIMIT 10
+  )
+)
+SELECT b.we_art_name, rk.rk
+FROM rk
+LEFT JOIN weverse-prod-analytics.we_mart.we_artist b ON rk.we_art_id = b.we_art_id
+ORDER BY rk.rk`
+    },
+    {
+      id:'ch4-ex2',
+      title:'구독 + 리스닝파티 두 CTE 합쳐서 아티스트별 전월 지표 조합',
+      desc:'IR 쿼리(Ch.4) 패턴으로 두 소스를 CTE로 분리하고 JOIN으로 합치기',
+      level:'고급',
+      hints:['CTE subscr: 전월 WDM 구독수 (stats_wv_t_dm_subscr)','CTE party: 전월 리스닝파티 파티수/참여자 (stats_wv_d_party)','최종: subscr LEFT JOIN party ON we_art_name','날짜: 전월 기준 자동 계산','각 CTE에서 we_art_name 기준 GROUP BY'],
+      answer:`WITH subscr AS (
+  SELECT we_art_name, SUM(cnt_subscr) AS wdm_subscr
+  FROM weverse-prod-analytics.we_mart.stats_wv_t_dm_subscr
+  WHERE key_date >= DATE_ADD(DATE_TRUNC(CURRENT_DATE(), MONTH), INTERVAL -1 MONTH)
+    AND key_date <  DATE_TRUNC(CURRENT_DATE(), MONTH)
+    AND dm_name = 'TOTAL' AND m_new_today = 'TOTAL' AND m_open_new = 'TOTAL'
+    AND date_type = 'D' AND subscr_type = 'TOTAL' AND subscr_type_dtl = 'TOTAL'
+  GROUP BY 1
+),
+party AS (
+  SELECT we_art_name,
+    SUM(party_cnt) AS party_cnt,
+    SUM(usr_tt_m) AS party_users
+  FROM weverse-prod-analytics.we_mart.stats_wv_d_party
+  WHERE key_month = DATE_ADD(DATE_TRUNC(CURRENT_DATE(), MONTH), INTERVAL -1 MONTH)
+    AND part_date >= DATE_ADD(DATE_TRUNC(CURRENT_DATE(), MONTH), INTERVAL -1 MONTH)
+    AND part_date <  DATE_TRUNC(CURRENT_DATE(), MONTH)
+    AND host_streaming_service = 'TOTAL' AND party_type = 'TOTAL'
+    AND we_art_id <> -9999
+  GROUP BY 1
+)
+SELECT
+  s.we_art_name,
+  s.wdm_subscr,
+  p.party_cnt,
+  p.party_users
+FROM subscr s
+LEFT JOIN party p ON s.we_art_name = p.we_art_name
+ORDER BY wdm_subscr DESC`
+    },
+    {
+      id:'ch4-ex3',
+      title:'하이브 14개 아티스트 — RU + 매출 CTE 분리 후 조합',
+      desc:'실무6 쿼리를 CTE 2개로 분리해서 깔끔하게 재구현',
+      level:'고급',
+      hints:['CTE hybe_art: 하이브 아티스트 목록 필터','CTE revenue: stats_we_t_kpi_metric에서 매출 집계','CTE ru: stats_we_t_kpi에서 RU 조회','최종: revenue LEFT JOIN ru ON (we_art_id, part_month)','INNER JOIN hybe_art로 하이브 아티스트만 필터'],
+      answer:`WITH hybe_art AS (
+  SELECT we_art_id, we_art_name
+  FROM weverse-prod-analytics.we_mart.we_artist
+  WHERE is_hybe_art = 1 AND is_comm_enabled = 1 AND is_comm_fronzen = 0
+    AND we_art_id IN (2,5,1,4,46,102,111,56,1630,119,50,64,1709,1722)
+  GROUP BY 1, 2
+),
+revenue AS (
+  SELECT a.part_date AS part_month, a.we_art_id, SUM(a.net_pay_krw) AS net_amt
+  FROM weverse-prod-analytics.we_mart.stats_we_t_kpi_metric a
+  INNER JOIN hybe_art h ON a.we_art_id = h.we_art_id
+  WHERE date_type = 'M' AND service_code = 'TOTAL'
+    AND extra_type = 'PRODUCT_TYPE' AND ctry_code = 'TOTAL'
+    AND part_date >= '2024-01-01' AND part_date < DATE_TRUNC(CURRENT_DATE(), MONTH)
+  GROUP BY 1, 2
+),
+ru AS (
+  SELECT part_date AS part_month, we_art_id, metric_val AS ru
+  FROM weverse-prod-analytics.we_mart.stats_we_t_kpi a
+  INNER JOIN hybe_art h ON a.we_art_id = h.we_art_id
+  WHERE date_type = 'M' AND ctry_code = 'TOTAL' AND service_code = 'WV'
+    AND metric_key = 'RU' AND extra_type = 'TOTAL'
+    AND part_date >= '2024-01-01' AND part_date < DATE_TRUNC(CURRENT_DATE(), MONTH)
+)
+SELECT
+  r.part_month, h.we_art_name,
+  r.net_amt, u.ru
+FROM revenue r
+LEFT JOIN ru u ON r.we_art_id = u.we_art_id AND r.part_month = u.part_month
+LEFT JOIN hybe_art h ON r.we_art_id = h.we_art_id
+ORDER BY r.part_month, r.net_amt DESC`
+    },
+  ],
+};
+
+// ===== RENDER =====
+function highlight(code) {
+  return code
+    .replace(/--.*$/gm, m => `<span class="cm">${m}</span>`)
+    .replace(/\/\*[\s\S]*?\*\//g, m => `<span class="cm">${m}</span>`)
+    .replace(/\b(SELECT|FROM|WHERE|GROUP BY|ORDER BY|HAVING|LIMIT|JOIN|LEFT JOIN|INNER JOIN|UNION ALL|WITH|AS|ON|AND|OR|NOT|IN|BETWEEN|LIKE|DISTINCT|CASE|WHEN|THEN|ELSE|END|IF|IFNULL|SAFE_DIVIDE|SUM|COUNT|AVG|MAX|MIN|DATE_TRUNC|EXTRACT|DATE_ADD|DATE_SUB|DATE_DIFF|FORMAT|PARSE_DATE|FORMAT_DATE|PERCENTILE_CONT|CURRENT_DATE|CURRENT_TIMESTAMP|TIMESTAMP_ADD|LAST_DAY|UPPER|DATE|INTERVAL|PARTITION BY|OVER|NULL|IS NULL|IS NOT NULL|NOT LIKE)\b/gi,
+      m => `<span class="kw">${m}</span>`)
+    .replace(/'[^']*'/g, m => `<span class="str">${m}</span>`)
+    .replace(/\b(\d+)\b/g, m => `<span class="num">${m}</span>`)
+    .replace(/`[^`]+`/g, m => `<span class="tbl">${m}</span>`)
+    .replace(/weverse-prod-analytics\.[a-z_]+\.[a-z_]+/g, m => `<span class="tbl">${m}</span>`);
+}
+
+function makeCard(q) {
+  const tags = q.tables.map(t=>`<span class="card-tag table">${t}</span>`).join('')
+    + q.funcs.map(f=>`<span class="card-tag func">${f}</span>`).join('');
+  const hintClass = q.hint ? (q.hintType==='warn'?'warn':q.hintType==='success'?'success':'') : '';
+  const hintHtml = q.hint ? `
+    <div class="card-section">
+      <div class="section-label">💡 포인트</div>
+      <div class="hint-box ${hintClass}" style="white-space:pre-line">${q.hint.replace(/\n/g,'<br>')}</div>
+    </div>` : '';
+
+  return `<div class="query-card" id="${q.id}">
+  <div class="card-header" onclick="toggleCard('${q.id}')">
+    <div class="card-num">${q.num}</div>
+    <div class="card-title-wrap">
+      <div class="card-title">${q.title}</div>
+      <div class="card-desc">${q.desc}</div>
+      <div class="card-tags">${tags}</div>
+    </div>
+    <div class="card-toggle" id="toggle-${q.id}">▼</div>
+  </div>
+  <div class="card-body" id="body-${q.id}">
+    ${hintHtml}
+    <div class="card-section">
+      <div class="section-label">📋 쿼리</div>
+      <div class="code-wrap">
+        <pre><code>${highlight(q.code)}</code></pre>
+        <button class="copy-btn" onclick="copyCode('${q.id}', this)">복사</button>
+      </div>
+    </div>
+  </div>
+</div>`;
+}
+
+function toggleCard(id) {
+  const body = document.getElementById('body-'+id);
+  const tog = document.getElementById('toggle-'+id);
+  body.classList.toggle('open');
+  tog.classList.toggle('open');
+}
+
+function copyCode(id, btn) {
+  const el = document.querySelector(`#${id} pre code`);
+  const text = el.innerText;
+  navigator.clipboard.writeText(text).then(()=>{
+    btn.textContent='✓ 복사됨'; btn.classList.add('copied');
+    setTimeout(()=>{ btn.textContent='복사'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+function renderHome() {
+  return `
+  <div class="welcome-banner">
+    <h1>🚀 글로벌전략팀 SQL 가이드</h1>
+    <p>BigQuery SQL 쿼리를 쉽게 찾고 실무에서 활용하는 모든 것을 담았어요</p>
+  </div>
+
+  <div class="search-container">
+    <div class="search-input-wrapper">
+      <input type="text" id="homeSearchInput" placeholder="쿼리 검색 (예: UNION, 아티스트, 매출...)"
+             onkeypress="if(event.key==='Enter') handleSearch(this.value)">
+    </div>
+
+    <div class="recommended-section">
+      <h3>⭐ 자주 찾는 쿼리</h3>
+      <div class="recommended-questions">
+        <div class="question-chip" onclick="handleSearch('매출')">💰 매출 관련</div>
+        <div class="question-chip" onclick="handleSearch('방문자')">👥 방문자/AU</div>
+        <div class="question-chip" onclick="handleSearch('구독')">🔑 구독자/RU</div>
+        <div class="question-chip" onclick="handleSearch('아티스트')">🎤 아티스트 지표</div>
+        <div class="question-chip" onclick="handleSearch('리스닝파티')">🎉 리스닝파티</div>
+        <div class="question-chip" onclick="handleSearch('UNION')">🔗 UNION ALL</div>
+        <div class="question-chip" onclick="handleSearch('CTE')">🏗️ WITH (CTE)</div>
+        <div class="question-chip" onclick="handleSearch('JOIN')">🔀 JOIN</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="weekly-quiz-section"></div>
+
+  <div class="home-grid">
+    ${[
+      {icon:'📦', title:'Ch.0 · 기초 조회', desc:'we_order 테이블 탐색, SELECT/WHERE/LIMIT 기본', page:'ch0', count:'5개 쿼리'},
+      {icon:'📊', title:'Ch.1 · 집계 & CASE WHEN', desc:'SUM/COUNT/GROUP BY, KPI 조회, CASE WHEN/IF', page:'ch1', count:'8개 쿼리'},
+      {icon:'🔍', title:'Ch.2 · 서브쿼리', desc:'중첩 쿼리, 윈도우 함수, 체류시간 분석', page:'ch2', count:'4개 쿼리'},
+      {icon:'🔗', title:'Ch.3 · JOIN & UNION', desc:'LEFT JOIN, INNER JOIN, UNION ALL 패턴', page:'ch3', count:'1개 쿼리'},
+      {icon:'🏗️', title:'Ch.4 · CTE (WITH절)', desc:'임시 테이블 생성, IR 지표 모음 쿼리', page:'ch4', count:'1개 쿼리'},
+      {icon:'⭐', title:'글전팀 주요 쿼리', desc:'실무에서 바로 쓰는 핵심 쿼리 모음', page:'ref', count:'17개 쿼리'},
+      {icon:'📖', title:'SQL 용어 사전', desc:'자주 쓰는 함수/개념 한눈에 보기', page:'glossary', count:''},
+    ].map(c=>`
+    <div class="home-card" onclick="showPage('${c.page}')">
+      <div class="hc-icon">${c.icon}</div>
+      <div class="hc-title">${c.title}</div>
+      <div class="hc-desc">${c.desc}</div>
+      ${c.count?`<div class="hc-count">→ ${c.count}</div>`:''}
+    </div>`).join('')}
+  </div>`;
+
+  // 렌더링 후 주간 퀴즈 섹션 추가
+  setTimeout(() => renderWeeklyQuiz(), 100);
+}
+
+function renderTables() {
+  const tables = [
+    {name:'we_order', desc:'매출/주문 데이터 (유저 단위)', stars:'⭐⭐⭐⭐', pk:'part_date / key_date'},
+    {name:'stats_we_m_kpi', desc:'위버스 월간 주요 KPI (집계)', stars:'⭐⭐⭐⭐', pk:'key_month'},
+    {name:'stats_we_m_artist_kpi', desc:'아티스트별 KPI (집계)', stars:'⭐⭐⭐⭐', pk:'part_month'},
+    {name:'stats_we_t_kpi_metric', desc:'서비스/아티스트별 KPI (집계)', stars:'⭐⭐⭐⭐', pk:'key_date'},
+    {name:'we_artist', desc:'아티스트 dimension (국가, 입점일 등)', stars:'⭐⭐⭐', pk:'-'},
+    {name:'we_user', desc:'유저 dimension (가입일, 국가 등)', stars:'⭐⭐⭐', pk:'part_date'},
+    {name:'we_country', desc:'국가 dimension', stars:'⭐⭐⭐', pk:'-'},
+    {name:'stats_wv_m_comm_engage_usr', desc:'적극 활동 유저 (집계)', stars:'⭐', pk:'key_date'},
+    {name:'stats_wv_m_retention_cohort_ratio', desc:'월간 리텐션 코호트 비율', stars:'⭐', pk:'join_month'},
+    {name:'stats_wv_w_art_indi_comm_activity', desc:'입점 아티스트 활동성 (주간)', stars:'⭐', pk:'key_date'},
+    {name:'stats_wv_d_party', desc:'리스닝파티 (일간)', stars:'⭐', pk:'part_date'},
+    {name:'stats_we_t_retention', desc:'리텐션 (D/W/M)', stars:'⭐', pk:'part_date'},
+    {name:'we_visit', desc:'유저 방문/체류시간', stars:'⭐', pk:'key_date'},
+    {name:'we_user_visit', desc:'유저 방문 로그', stars:'⭐', pk:'vst_date/part_date'},
+    {name:'stats_wv_d_live_play', desc:'위버스 라이브 재생 (일간)', stars:'⭐', pk:'part_date'},
+    {name:'stats_wv_d_comm_join', desc:'커뮤니티 가입 (일간)', stars:'⭐', pk:'key_date'},
+  ];
+  return `
+  <div class="chapter-header">
+    <div class="chapter-icon" style="background:rgba(52,211,153,.1)">🗂️</div>
+    <div><h2>주요 테이블 정리</h2><p>weverse-prod-analytics 프로젝트 기준</p></div>
+  </div>
+  <div class="hint-box" style="margin-bottom:16px">
+    📌 테이블 구조: <code>weverse-prod-analytics</code> (프로젝트) → <code>we_mart</code> (데이터세트) → 테이블명<br>
+    💡 파티션키를 WHERE에 항상 포함해서 쿼리 비용/속도를 최적화하세요!
+  </div>
+  <div class="table-info-grid">
+    ${tables.map(t=>`
+    <div class="table-info-card">
+      <div class="tname">we_mart.${t.name}</div>
+      <div class="tdesc">${t.desc}</div>
+      <div class="tstars">${t.stars} · PK: ${t.pk}</div>
+    </div>`).join('')}
+  </div>`;
+}
+
+function renderGlossary() {
+  const terms = [
+    {term:'SELECT', def:'조회할 컬럼 지정. * 는 전체', ex:'SELECT key_date, we_art_name'},
+    {term:'FROM', def:'데이터를 가져올 테이블 지정', ex:'FROM we_mart.we_order'},
+    {term:'WHERE', def:'행(Row) 단위 필터링', ex:'WHERE part_date = \'2026-01-01\''},
+    {term:'GROUP BY', def:'집계 기준 컬럼 지정 (SUM/COUNT 등과 함께)', ex:'GROUP BY key_date, product_type'},
+    {term:'ORDER BY', def:'결과 정렬 (ASC=오름차순, DESC=내림차순)', ex:'ORDER BY key_date DESC'},
+    {term:'HAVING', def:'GROUP BY 후 집계 결과 필터링', ex:'HAVING SUM(pay_amt_krw) >= 1000000'},
+    {term:'LIMIT', def:'결과 행 수 제한', ex:'LIMIT 10'},
+    {term:'SUM()', def:'합계', ex:'SUM(pay_amt_krw)'},
+    {term:'COUNT(DISTINCT)', def:'중복 제거 후 개수', ex:'COUNT(DISTINCT we_member_id)'},
+    {term:'AVG()', def:'평균', ex:'AVG(sess_dur)'},
+    {term:'IFNULL(a,b)', def:'a가 NULL이면 b로 대체', ex:'IFNULL(cx_amt_krw, 0)'},
+    {term:'SAFE_DIVIDE(a,b)', def:'나누기 (0 나누기 에러 방지)', ex:'SAFE_DIVIDE(pu_we, mau_we)'},
+    {term:'DATE_TRUNC()', def:'날짜를 특정 단위로 절삭', ex:'DATE_TRUNC(key_date, MONTH)'},
+    {term:'EXTRACT()', def:'날짜에서 특정 부분 추출', ex:'EXTRACT(YEAR FROM key_date)'},
+    {term:'DATE_ADD/SUB', def:'날짜 더하기/빼기', ex:'DATE_ADD(date, INTERVAL 3 MONTH)'},
+    {term:'DATE_DIFF()', def:'두 날짜의 차이 계산', ex:'DATE_DIFF(v.visit_date, s.signup_date, DAY)'},
+    {term:'UPPER()', def:'문자열을 대문자로 변환', ex:'UPPER(goods_name)'},
+    {term:'LIKE / NOT LIKE', def:'패턴 매칭 (% = 와일드카드)', ex:'UPPER(art_indi_name) NOT LIKE \'%OFFICIAL%\''},
+    {term:'IN / NOT IN', def:'여러 값 일치/미일치 조건', ex:'product_type IN (\'WDM\', \'Membership\')'},
+    {term:'CASE WHEN', def:'조건부 값 변환 (if-else)', ex:'CASE WHEN is_pay=1 THEN we_member_id END'},
+    {term:'IF(cond,a,b)', def:'조건이 참이면 a, 거짓이면 b', ex:'IF(is_pay=1, \'paid\', \'free\')'},
+    {term:'LEFT JOIN', def:'왼쪽 테이블 전체 + 오른쪽 매칭', ex:'LEFT JOIN we_artist b ON a.we_art_id = b.we_art_id'},
+    {term:'INNER JOIN', def:'양쪽 모두 매칭되는 행만', ex:'INNER JOIN user_visits v ON s.we_member_id = v.we_member_id'},
+    {term:'UNION ALL', def:'여러 쿼리 결과를 세로로 합치기', ex:'SELECT ... UNION ALL SELECT ...'},
+    {term:'WITH (CTE)', def:'임시 테이블 정의 후 재사용', ex:'WITH temp AS (SELECT ...) SELECT * FROM temp'},
+    {term:'OVER(PARTITION BY)', def:'윈도우 함수: 그룹별 계산', ex:'SUM(amt) OVER (PARTITION BY mon)'},
+    {term:'PERCENTILE_CONT', def:'백분위수 계산 (0.5 = 중위값)', ex:'PERCENTILE_CONT(dur, 0.5) OVER (PARTITION BY mon)'},
+    {term:'BETWEEN A AND B', def:'A 이상 B 이하 범위 (주의: B의 시작까지)', ex:'part_date BETWEEN \'2026-01-01\' AND \'2026-01-31\''},
+  ];
+  return `
+  <div class="chapter-header">
+    <div class="chapter-icon" style="background:rgba(167,139,250,.1)">📖</div>
+    <div><h2>SQL 용어 사전</h2><p>자주 쓰는 함수와 개념 정리</p></div>
+  </div>
+  <div class="glossary-grid">
+    ${terms.map(t=>`
+    <div class="glossary-item">
+      <div class="gterm">${t.term}</div>
+      <div class="gdef">${t.def}</div>
+      <div class="gex">${t.ex}</div>
+    </div>`).join('')}
+  </div>`;
+}
+
+function makeQuizCard(q) {
+  const hints = q.hints.map(h=>`<li>${h}</li>`).join('');
+  return `<div class="quiz-card" id="${q.id}">
+  <div class="quiz-header" onclick="toggleQuiz('${q.id}')">
+    <div class="quiz-num">Q</div>
+    <div class="card-title-wrap">
+      <div class="card-title">${q.title}
+        <span class="quiz-level level-${q.level}">${q.level}</span>
+      </div>
+      <div class="card-desc">${q.desc}</div>
+    </div>
+    <div class="card-toggle" id="qtoggle-${q.id}">▼</div>
+  </div>
+  <div class="quiz-body" id="qbody-${q.id}">
+    <div class="quiz-hints">
+      <div class="section-label">💡 힌트</div>
+      <ul class="hint-list">${hints}</ul>
+    </div>
+    <button class="answer-toggle" id="abtn-${q.id}" onclick="toggleAnswer('${q.id}')">
+      👀 정답 보기
+    </button>
+    <div class="quiz-answer" id="qanswer-${q.id}">
+      <div class="card-section">
+        <div class="section-label">✅ 정답</div>
+        <div class="code-wrap">
+          <pre><code>${highlight(q.answer)}</code></pre>
+          <button class="copy-btn" onclick="copyQuizAnswer('${q.id}', this)">복사</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>`;
+}
+
+function toggleQuiz(id) {
+  const body = document.getElementById('qbody-'+id);
+  const tog = document.getElementById('qtoggle-'+id);
+  body.classList.toggle('open');
+  tog.classList.toggle('open');
+}
+
+function toggleAnswer(id) {
+  const ans = document.getElementById('qanswer-'+id);
+  const btn = document.getElementById('abtn-'+id);
+  const open = ans.classList.toggle('open');
+  btn.textContent = open ? '🙈 정답 숨기기' : '👀 정답 보기';
+  btn.classList.toggle('revealed', open);
+}
+
+function copyQuizAnswer(id, btn) {
+  const el = document.querySelector(`#qanswer-${id} pre code`);
+  navigator.clipboard.writeText(el.innerText).then(()=>{
+    btn.textContent='✓ 복사됨'; btn.classList.add('copied');
+    setTimeout(()=>{ btn.textContent='복사'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+function renderChapter(ch, icon, title, desc, color) {
+  const qs = QUERIES[ch] || [];
+  const exs = QUIZZES[ch] || [];
+  const quizSection = exs.length === 0 ? '' : `
+  <div class="quiz-section-header">
+    <div style="font-size:20px">✏️</div>
+    <div>
+      <h3>연습 문제 <span class="quiz-badge">${exs.length}개</span></h3>
+      <p>힌트를 보고 직접 쿼리를 작성해보세요. 막히면 정답을 확인!</p>
+    </div>
+  </div>
+  ${exs.map(makeQuizCard).join('')}`;
+  return `
+  <div class="chapter-header">
+    <div class="chapter-icon" style="background:${color}">${icon}</div>
+    <div><h2>${title}</h2><p>${desc}</p></div>
+  </div>
+  ${qs.map(makeCard).join('')}
+  ${quizSection}`;
+}
+
+const PAGE_RENDER = {
+  home: ()=>renderHome(),
+  tables: ()=>renderTables(),
+  glossary: ()=>renderGlossary(),
+  ch0: ()=>renderChapter('ch0','📦','Ch.0 · 기초 조회','we_order 테이블 탐색 및 기본 문법','rgba(52,211,153,.1)'),
+  ch1: ()=>renderChapter('ch1','📊','Ch.1 · 집계 & CASE WHEN','SUM/COUNT/GROUP BY, KPI 조회, 조건부 집계','rgba(251,191,36,.1)'),
+  ch2: ()=>renderChapter('ch2','🔍','Ch.2 · 서브쿼리','중첩 쿼리, 윈도우 함수, 체류시간 분석','rgba(108,142,247,.1)'),
+  ch3: ()=>renderChapter('ch3','🔗','Ch.3 · JOIN & UNION','테이블 연결 및 UNION ALL 패턴','rgba(249,115,22,.1)'),
+  ch4: ()=>renderChapter('ch4','🏗️','Ch.4 · CTE (WITH절)','임시 테이블 생성, IR 지표 모음','rgba(167,139,250,.1)'),
+  ref: ()=>renderChapter('ref','⭐','글전팀 주요 쿼리','실무에서 바로 쓸 수 있는 핵심 쿼리','rgba(234,179,8,.1)'),
+};
+
+let currentPage = 'home';
+let allCards = [];
+
+// 2주 주기로 연습문제 로테이션
+function renderWeeklyQuiz() {
+  const section = document.getElementById('weekly-quiz-section');
+  if(!section) return;
+
+  // 2024-01-01부터 시작해서 2주마다 로테이션
+  const startDate = new Date('2024-01-01');
+  const today = new Date();
+  const daysPassed = Math.floor((today - startDate) / (1000 * 60 * 60 * 24));
+  const biweek = Math.floor(daysPassed / 14) % 5; // 5개의 다른 세트 로테이션
+
+  // 각 2주마다 다른 챕터 조합
+  const quizSets = [
+    {chapters: ['ch0', 'ch1'], title: '🎯 기초 & 집계 연습'},
+    {chapters: ['ch1', 'ch2'], title: '📊 집계 & 서브쿼리 연습'},
+    {chapters: ['ch2', 'ch3'], title: '🔍 서브쿼리 & JOIN 연습'},
+    {chapters: ['ch3', 'ch4'], title: '🔗 JOIN & CTE 연습'},
+    {chapters: ['ch0', 'ch1', 'ch2', 'ch3', 'ch4'], title: '🏆 종합 연습 (전체)'},
+  ];
+
+  const currentSet = quizSets[biweek];
+  let quizzes = [];
+  currentSet.chapters.forEach(ch=>{
+    if(QUIZZES[ch]) quizzes.push(...QUIZZES[ch]);
+  });
+
+  // 날짜 정보 계산
+  const weekStart = new Date(startDate);
+  weekStart.setDate(weekStart.getDate() + biweek * 14);
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekEnd.getDate() + 13);
+
+  const dateStr = `${weekStart.toLocaleDateString('ko-KR')} ~ ${weekEnd.toLocaleDateString('ko-KR')}`;
+
+  section.innerHTML = `
+  <div style="margin-bottom:32px;padding:24px;background:linear-gradient(135deg, rgba(52,211,153,.1), rgba(59,130,246,.1));border:1px solid rgba(52,211,153,.2);border-radius:14px;">
+    <div style="margin-bottom:16px;">
+      <div style="font-size:14px;font-weight:700;color:var(--green);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px;">📅 이번 2주 추천 연습문제</div>
+      <div style="font-size:12px;color:var(--text-muted);">${dateStr}</div>
+    </div>
+    <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:16px;">${currentSet.title}</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(280px,1fr));gap:12px;margin-bottom:16px;">
+      ${quizzes.slice(0,6).map(q=>`
+      <div class="quiz-card" onclick="toggleQuiz('${q.id}', this)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <div style="font-size:13px;font-weight:700;color:var(--text);">${q.title}</div>
+          <span class="level-badge" style="font-size:10px;padding:3px 8px;border-radius:4px;
+            ${q.level==='기초'?'background:rgba(52,211,153,.2);color:var(--green);':
+              q.level==='중급'?'background:rgba(251,191,36,.2);color:var(--yellow);':
+              'background:rgba(167,139,250,.2);color:var(--accent2);'}">${q.level}</span>
+        </div>
+        <div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-bottom:8px;">${q.desc || '설명 없음'}</div>
+        <div class="quiz-body" id="body-${q.id}" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
+          <div style="background:var(--code-bg);padding:10px;border-radius:6px;font-size:11px;color:var(--text-muted);margin-bottom:8px;max-height:150px;overflow:auto;font-family:monospace;">
+            ${q.hints && q.hints.length > 0 ? q.hints[0] : '힌트 없음'}
+          </div>
+          <button style="width:100%;padding:8px;background:var(--accent);color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;transition:.2s;" onclick="toggleAnswer('${q.id}', event)">정답 보기</button>
+          <div class="quiz-answer" id="ans-${q.id}" style="display:none;margin-top:8px;padding:10px;background:var(--surface2);border-radius:6px;border-left:3px solid var(--green);">
+            <pre style="color:var(--green);font-size:11px;margin:0;overflow:auto;max-height:200px;"><code>${q.answer || '정답 없음'}</code></pre>
+          </div>
+        </div>
+      </div>`).join('')}
+    </div>
+    <a href="#" onclick="showPage('ch0');return false;" style="display:inline-block;padding:8px 16px;background:var(--accent);color:#fff;border-radius:6px;font-size:12px;font-weight:700;text-decoration:none;cursor:pointer;">모든 연습문제 보기 →</a>
+  </div>`;
+}
+
+function toggleQuiz(id, elem) {
+  const body = document.getElementById('body-' + id);
+  if(body) body.style.display = body.style.display === 'none' ? 'block' : 'none';
+}
+
+function toggleAnswer(id, e) {
+  e.preventDefault();
+  const ans = document.getElementById('ans-' + id);
+  if(ans) ans.style.display = ans.style.display === 'none' ? 'block' : 'none';
+}
+
+function showPage(page) {
+  currentPage = page;
+  const info = PAGES[page];
+  document.getElementById('page-title').textContent = info.title;
+  const badge = document.getElementById('page-badge');
+  badge.textContent = info.badge;
+  badge.style.display = info.badge ? '' : 'none';
+
+  // nav highlight
+  document.querySelectorAll('.nav-item').forEach(el=>{
+    el.classList.remove('active');
+    if(el.getAttribute('onclick') && el.getAttribute('onclick').includes(`'${page}'`)) {
+      el.classList.add('active');
+    }
+  });
+
+  const content = document.getElementById('content');
+  content.innerHTML = PAGE_RENDER[page]();
+  content.scrollTop = 0;
+}
+
+function handleSearch(val) {
+  const words = val.trim().toLowerCase().split(/\s+/).filter(w=>w);
+  if(!words.length) { showPage(currentPage); return; }
+
+  // Search across all chapters - match ANY word
+  let primaryResults = [];
+  let relatedResults = [];
+  let primaryTables = [];
+  let primaryFuncs = [];
+  let matchScores = {};
+
+  Object.values(QUERIES).forEach(qs=>{
+    qs.forEach(query=>{
+      let matchCount = 0;
+      const titleLower = query.title.toLowerCase();
+      const descLower = query.desc.toLowerCase();
+      const codeLower = query.code.toLowerCase();
+
+      // 각 검색어에 대해 점수 계산
+      words.forEach(word=>{
+        if(titleLower.includes(word)) matchCount += 3;  // 제목 일치 - 높은 가중치
+        else if(descLower.includes(word)) matchCount += 2;  // 설명 일치
+        else if(codeLower.includes(word)) matchCount += 1;  // 코드 일치
+        else if(query.tables.some(t=>t.toLowerCase().includes(word))) matchCount += 1.5;
+        else if(query.funcs.some(f=>f.toLowerCase().includes(word))) matchCount += 1.5;
+      });
+
+      if(matchCount > 0) {
+        primaryResults.push(query);
+        matchScores[query.id] = matchCount;
+        primaryTables.push(...query.tables);
+        primaryFuncs.push(...query.funcs);
+      }
+    });
+  });
+
+  // 점수 기준으로 정렬
+  primaryResults.sort((a,b) => (matchScores[b.id] || 0) - (matchScores[a.id] || 0));
+
+  // 연관된 쿼리 찾기 (같은 테이블이나 함수를 사용하되, 정확히 일치하지 않은 쿼리)
+  if(primaryResults.length > 0) {
+    Object.values(QUERIES).forEach(qs=>{
+      qs.forEach(query=>{
+        if(!primaryResults.includes(query)) {
+          const hasSameTable = query.tables.some(t => primaryTables.includes(t));
+          const hasSameFunc = query.funcs.some(f => primaryFuncs.includes(f));
+          if(hasSameTable || hasSameFunc) {
+            relatedResults.push(query);
+          }
+        }
+      });
+    });
+  }
+
+  document.getElementById('page-title').textContent = `검색: "${val}" (${words.length}개 단어)`;
+  const totalCount = primaryResults.length + relatedResults.length;
+  document.getElementById('page-badge').textContent = `${primaryResults.length}${relatedResults.length > 0 ? '+' + relatedResults.length : ''}개`;
+
+  const content = document.getElementById('content');
+  if(primaryResults.length === 0) {
+    content.innerHTML = `<div style="text-align:center;padding:60px;color:var(--text-muted)">
+      <div style="font-size:48px;margin-bottom:16px">🔍</div>
+      <div>"${val}"에 대한 결과가 없어요</div>
+    </div>`;
+    return;
+  }
+
+  let html = primaryResults.map(makeCard).join('');
+  if(relatedResults.length > 0) {
+    html += `
+    <div style="margin-top:40px;padding-top:24px;border-top:1px solid var(--border);">
+      <div style="font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:16px;letter-spacing:.5px;">
+        📌 연관된 쿼리 (같은 테이블/함수)
+      </div>
+      ${relatedResults.slice(0,10).map(makeCard).join('')}
+    </div>`;
+  }
+  content.innerHTML = html;
+}
+
+// ===== TEACHER =====
+let teacherOpen = false;
+function toggleTeacher() {
+  teacherOpen = !teacherOpen;
+  document.getElementById('teacher-panel').classList.toggle('open', teacherOpen);
+  document.getElementById('teacher-toggle').textContent = teacherOpen ? '✕' : '🤖';
+}
+
+function addMsg(text, isUser) {
+  const area = document.getElementById('chat-area');
+  const div = document.createElement('div');
+  div.className = 'chat-msg ' + (isUser?'user':'bot');
+  div.innerHTML = text;
+  area.appendChild(div);
+  area.scrollTop = area.scrollHeight;
+}
+
+function quickAsk(key) {
+  const qa = QA[key];
+  addMsg(qa.q, true);
+  setTimeout(()=>addMsg(qa.a, false), 300);
+}
+
+const KEYWORD_MAP = [
+  {keys:['파티션','partition','part_date'], key:'partition_key'},
+  {keys:['group by','그룹','집계'], key:'group_by'},
+  {keys:['join','조인'], key:'join_diff'},
+  {keys:['with','cte','임시'], key:'with_cte'},
+  {keys:['순판매','net','환불'], key:'net_amt'},
+  {keys:['date_trunc','날짜','절삭'], key:'date_trunc'},
+];
+
+function sendChat() {
+  const input = document.getElementById('chat-input');
+  const val = input.value.trim();
+  if(!val) return;
+  addMsg(val, true);
+  input.value = '';
+
+  const low = val.toLowerCase();
+  let matched = null;
+  for(const km of KEYWORD_MAP) {
+    if(km.keys.some(k=>low.includes(k))) { matched = km.key; break; }
+  }
+
+  setTimeout(()=>{
+    if(matched && QA[matched]) {
+      addMsg(QA[matched].a, false);
+    } else {
+      // Search queries
+      let found = [];
+      Object.values(QUERIES).forEach(qs=>{
+        qs.forEach(q=>{
+          if(q.title.toLowerCase().includes(low) || q.desc.toLowerCase().includes(low) ||
+             q.tables.some(t=>t.toLowerCase().includes(low))) found.push(q);
+        });
+      });
+      if(found.length > 0) {
+        let resp = `"${val}"와 관련된 쿼리를 찾았어요! 📋<br><br>`;
+        found.slice(0,3).forEach(q=>{
+          resp += `• <b>${q.title}</b> (${q.tables.join(', ')})<br>`;
+        });
+        resp += `<br>왼쪽 메뉴나 검색창에서 더 자세히 확인해보세요!`;
+        addMsg(resp, false);
+      } else {
+        addMsg(`"${val}"에 대한 답변을 찾지 못했어요 😅<br><br>
+아래 빠른 버튼들을 눌러서 자주 묻는 질문을 확인해보거나,<br>
+검색창(왼쪽 상단)에서 직접 쿼리를 검색해보세요!`, false);
+      }
+    }
+  }, 400);
+}
+
+// ===== INIT =====
+showPage('home');
+document.getElementById('page-badge').style.display = 'none';
+</script>
+</body>
+</html>
