@@ -3066,18 +3066,31 @@ function showQuizModal(title, content) {
     <div style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999;">
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;max-width:500px;max-height:70vh;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.2);">
         <h3 style="margin:0 0 16px 0;color:var(--text);font-size:16px;font-weight:700;">${title}</h3>
-        <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:16px;color:var(--text);font-size:14px;line-height:1.6;white-space:pre-wrap;word-break:break-word;">
+        <div id="quiz-content" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:16px;color:var(--text);font-size:14px;line-height:1.6;white-space:pre-wrap;word-break:break-word;">
           ${content}
         </div>
         <div style="display:flex;gap:8px;justify-content:flex-end;">
-          <button onclick="document.getElementById('quiz-modal').remove();" style="padding:8px 16px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-weight:600;">확인</button>
-          <button onclick="copyQuizText('${content.replace(/'/g, "\\'")}');document.getElementById('quiz-modal').remove();" style="padding:8px 16px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600;">📋 복사</button>
+          <button id="close-btn" style="padding:8px 16px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-weight:600;">확인</button>
+          <button id="copy-btn" style="padding:8px 16px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600;">📋 복사</button>
         </div>
       </div>
     </div>
   `;
 
   document.body.appendChild(modal);
+
+  // 버튼 이벤트 리스너
+  document.getElementById('close-btn').onclick = () => {
+    document.getElementById('quiz-modal').remove();
+  };
+
+  document.getElementById('copy-btn').onclick = () => {
+    copyQuizText(content);
+    setTimeout(() => {
+      const modal = document.getElementById('quiz-modal');
+      if (modal) modal.remove();
+    }, 100);
+  };
 }
 
 // 복사 함수
@@ -3089,7 +3102,8 @@ function copyQuizText(text) {
     msg.style.cssText = 'position:fixed;top:20px;right:20px;background:var(--green);color:#fff;padding:12px 16px;border-radius:6px;font-weight:600;z-index:10000;';
     document.body.appendChild(msg);
     setTimeout(() => msg.remove(), 2000);
-  }).catch(() => {
+  }).catch(err => {
+    console.error('복사 실패:', err);
     alert('복사 실패. 브라우저에서 클립보드 접근을 허용해주세요.');
   });
 }
